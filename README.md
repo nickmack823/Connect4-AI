@@ -1,5 +1,7 @@
 # B351-Final-Project (Connect 4 AI)
 
+(NOTE: This program was developed as part of a group project. I worked on everything except for the methods relating to the heuristics.)
+
 ## game.py
 This is the main file of our Connect4 program. Running this file allows 
 the user to either run the "test suite" or to customize the game(s) that
@@ -93,11 +95,11 @@ on the board (move_position)"
 
 **checkAdjacentSpacesHeuristic(self, move_position)**
 
-
+This function works similarly to checkAdjacentSpaces, except it returns a heuristic score for a position on the board based on how many pieces are connected at that position, instead of returning True or False for if there is a Connect Four.
 
 **checkAdjacentSpacesHeuristicEnemy(self, move_position)**
 
-
+Returns a heuristic score for a position on the board, just as checkAdjacentSpacesHeuristic does, but it checks for connected enemy pieces.
 
 **undoMove(self)**
 
@@ -106,7 +108,6 @@ Undoes the most recently performed move.
 **printBoard(self)**
 
 Prints out a console representation of the current board.
-
 
 ## player.py
 
