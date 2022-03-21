@@ -340,7 +340,7 @@ class Player:
 class ManualPlayer(Player):
     label = "Manual"
 
-    def findMove(self, move_history):
+    def findMove(self, move_history, selected_column):
         board = Board(move_history)
         opts = " "
         for c in range(7):
@@ -352,11 +352,10 @@ class ManualPlayer(Player):
                 board.printBoard()
                 print("--------------------")
                 print(opts)
-                pit = input("Pick a column (P1): ")
-            try: pit = int(pit) - 1
-            except ValueError: continue
-            if board.isValidMove(pit):
-                return pit
+            if board.isValidMove(selected_column):
+                return selected_column
+            else:
+                return None
 
 class PlayerRandom(Player):
     label = "Random"

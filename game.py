@@ -1,7 +1,22 @@
+import sys
 
 from player import *
 import time
+import pygame
+import math
 
+BLUE = (0,0,255)
+BLACK = (0,0,0)
+RED = (255,0,0)
+YELLOW = (255,255,0)
+
+COLUMN_COUNT = 7
+ROW_COUNT = 6
+SQUARE_SIZE = 100
+RADIUS = int(SQUARE_SIZE/2 - 5)
+width = COLUMN_COUNT * SQUARE_SIZE
+height = (ROW_COUNT + 1) * SQUARE_SIZE
+screen_size = (width, height)
 
 class Game:
 
@@ -13,42 +28,62 @@ class Game:
         self.time_elapsed_p1, self.time_elapsed_p2 = 0, 0
         self.total_time = 0
         self.results = {player1.label: 0, player2.label: 0, 'Draw': 0}
+        self.board = Board()
 
     def playGame(self):
-        board = Board()
+        board = self.board
         self.player1.moves_considered, self.player2.moves_considered = 0, 0
         print(self.player1.label + " vs. " + self.player2.label)
 
         while not board.game_over:
-            move = None
-            if board.turn == 1:
-                print("Player 1 turn")
-                time_start = time.time()
-                move = self.player1.findMove(board.move_history)
-                time_end = time.time()
-                self.time_elapsed_p1 += time_end - time_start
-                print("Player 1 move: " + str(move))
-            if board.turn == 2:
-                print("Player 2 turn")
-                time_start = time.time()
-                move = self.player2.findMove(board.move_history)
-                time_end = time.time()
-                self.time_elapsed_p2 += time_end - time_start
-                print("Player 2 move: " + str(move))
-            board.makeMove(move)
-            board.printBoard()
 
-            self.total_moves_p1 += self.player1.moves_considered
-            self.total_moves_p2 += self.player2.moves_considered
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit
+                elif event.type == pygame.MOUSEMOTION:
+                    if board.turn == 1:
+                        x = event.pos[0]
+                        self.drawHoveringPiece(x, RED)
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    move = None
+                    if board.turn == 1:
+                        print("Player 1 turn")
+                        x = event.pos[0]
+                        col = int(math.floor(x/SQUARE_SIZE))
+                        print(col)
 
-            if board.winner == 1:
-                print("Player 1 wins.")
-            elif board.winner == 2:
-                print("Player 2 wins.")
-            elif board.winner == 0:
-                print("Draw.")
-            if board.winner is not None:
-                self.recordResult(board.winner)
+                        time_start = time.time()
+                        move = self.player1.findMove(board.move_history, col)
+                        # User attempts invalid move
+                        if move == None:
+                            continue
+                        time_end = time.time()
+                        self.time_elapsed_p1 += time_end - time_start
+                        self.drawPiece(move, board.getMoveRow(move), RED)
+                        print("Player 1 move: " + str(move))
+                    if board.turn == 2:
+                        print("Player 2 turn")
+                        time_start = time.time()
+                        move = self.player2.findMove(board.move_history)
+                        time_end = time.time()
+                        self.time_elapsed_p2 += time_end - time_start
+                        self.drawPiece(move, board.getMoveRow(move), YELLOW)
+                        print("Player 2 move: " + str(move))
+                    print(move)
+                    board.makeMove(move)
+                    board.printBoard()
+
+                    self.total_moves_p1 += self.player1.moves_considered
+                    self.total_moves_p2 += self.player2.moves_considered
+
+                    if board.winner == 1:
+                        print("Player 1 wins.")
+                    elif board.winner == 2:
+                        print("Player 2 wins.")
+                    elif board.winner == 0:
+                        print("Draw.")
+                    if board.winner is not None:
+                        self.recordResult(board.winner)
 
     def recordResult(self, result):
         if result == 1:
@@ -143,59 +178,88 @@ class Game:
         # Returns None if invalid input
         return None
 
-if __name__ == "__main__":
-    print("Welcome to Connect Four!")
-    print("Would you like to run the standard test suite (1), or would you like to customize your game (2)?")
-    game_suite = int(input())
-    if game_suite == 1:
-        print("Games to run in the test suite: ")
-        n = int(input())
-        g1 = Game(PlayerRandom(None), PlayerRandom(None))
-        total_time = time.time()
-        g1.testSuite(n)
-        total_time = time.time() - total_time
-        print("\nTOTAL TIME ELAPSED: " + str(round(total_time, 2)) + " seconds.")
-    else:
-        print("Please select your player type: (1) Minimax, (2) Alpha-Beta, (3) Monte Carlo, (4) Manual")
-        character = int(input())
-        # Get player type from input
-        player_type = Game.getPlayer(character)
-        if player_type is None:
-            print("You did not enter a valid option")
-        else:
-            if player_type == "Minimax" or player_type == "Alpha-Beta":
-                depth = int(input("What do you want the maximum depth of your search to be: "))
-                heuristic = int(input("Which heuristic do you want to use (1, 2, or 3): "))
-                if player_type == "Minimax":
-                    player = PlayerMM(depth, heuristic)
-                elif player_type == "Alpha-Beta":
-                    player = PlayerAB(depth, heuristic)
-            elif player_type == "Monte Carlo":
-                tests = int(input("Monte Carlo test count per move: "))
-                player = PlayerMC(tests)
-            else:
-                player = ManualPlayer()
-            print("Please select your opponent: (1) Random, (2) Minimax, (3) Alpha-Beta, (4) Monte Carlo")
-            opponent = int(input())
-            opponent_type = Game.getOpponent(opponent)
-            if opponent_type is None:
-                print("You did not enter a valid option")
-            else:
-                if opponent_type == "Minimax" or opponent_type == "Alpha-Beta":
-                    opponent_depth = int(input("Opponent maximum depth: "))
-                    opponent_heuristic = int(input("Opponent heuristic (1, 2, or 3): "))
-                    if opponent_type == "Minimax":
-                        opponent = PlayerMM(opponent_depth, opponent_heuristic)
-                    elif opponent_type == "Alpha-Beta":
-                        opponent = PlayerAB(opponent_depth, opponent_heuristic)
-                elif opponent_type == "Monte Carlo":
-                    opponent_tests = int(input("Opponent Monte Carlo test count per move: "))
-                    opponent = PlayerMC(opponent_tests)
-                else:
-                    opponent = PlayerRandom()
+    def drawBoard(self):
+        for c in range(COLUMN_COUNT):
+            for r in range(ROW_COUNT):
+                pygame.draw.rect(screen, BLUE, (c*SQUARE_SIZE, r*SQUARE_SIZE + SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+                pygame.draw.circle(screen, BLACK, (int(c*SQUARE_SIZE + SQUARE_SIZE/2),
+                                                   int(r*SQUARE_SIZE + SQUARE_SIZE + SQUARE_SIZE/2)), RADIUS)
+        pygame.display.update()
 
-                game_count = int(input("How many games would you like to play: "))
-                g = Game(player, opponent)
-                for game in range(0, game_count):
-                    g.playGame()
-                g.printResults([g], game_count)
+    def drawPiece(self, column, row, color):
+        pygame.draw.circle(screen, color, (int(column * SQUARE_SIZE + SQUARE_SIZE / 2),
+                                           int(row * SQUARE_SIZE + SQUARE_SIZE + SQUARE_SIZE - SQUARE_SIZE / 2)), RADIUS)
+        pygame.display.update()
+
+    def drawHoveringPiece(self, x, color):
+        pygame.draw.rect(screen, BLACK, (0,0,width,SQUARE_SIZE))
+        pygame.draw.circle(screen, color, (x, int(SQUARE_SIZE/2)),RADIUS)
+        pygame.display.update()
+
+# if __name__ == "__main__":
+#     print("Welcome to Connect Four!")
+#     print("Would you like to run the standard test suite (1), or would you like to customize your game (2)?")
+#     game_suite = int(input())
+#     if game_suite == 1:
+#         print("Games to run in the test suite: ")
+#         n = int(input())
+#         g1 = Game(PlayerRandom(None), PlayerRandom(None))
+#         total_time = time.time()
+#         g1.testSuite(n)
+#         total_time = time.time() - total_time
+#         print("\nTOTAL TIME ELAPSED: " + str(round(total_time, 2)) + " seconds.")
+#     else:
+#         print("Please select your player type: (1) Minimax, (2) Alpha-Beta, (3) Monte Carlo, (4) Manual")
+#         character = int(input())
+#         # Get player type from input
+#         player_type = Game.getPlayer(character)
+#         if player_type is None:
+#             print("You did not enter a valid option")
+#         else:
+#             if player_type == "Minimax" or player_type == "Alpha-Beta":
+#                 depth = int(input("What do you want the maximum depth of your search to be: "))
+#                 heuristic = int(input("Which heuristic do you want to use (1, 2, or 3): "))
+#                 if player_type == "Minimax":
+#                     player = PlayerMM(depth, heuristic)
+#                 elif player_type == "Alpha-Beta":
+#                     player = PlayerAB(depth, heuristic)
+#             elif player_type == "Monte Carlo":
+#                 tests = int(input("Monte Carlo test count per move: "))
+#                 player = PlayerMC(tests)
+#             else:
+#                 player = ManualPlayer()
+#             print("Please select your opponent: (1) Random, (2) Minimax, (3) Alpha-Beta, (4) Monte Carlo")
+#             opponent = int(input())
+#             opponent_type = Game.getOpponent(opponent)
+#             if opponent_type is None:
+#                 print("You did not enter a valid option")
+#             else:
+#                 if opponent_type == "Minimax" or opponent_type == "Alpha-Beta":
+#                     opponent_depth = int(input("Opponent maximum depth: "))
+#                     opponent_heuristic = int(input("Opponent heuristic (1, 2, or 3): "))
+#                     if opponent_type == "Minimax":
+#                         opponent = PlayerMM(opponent_depth, opponent_heuristic)
+#                     elif opponent_type == "Alpha-Beta":
+#                         opponent = PlayerAB(opponent_depth, opponent_heuristic)
+#                 elif opponent_type == "Monte Carlo":
+#                     opponent_tests = int(input("Opponent Monte Carlo test count per move: "))
+#                     opponent = PlayerMC(opponent_tests)
+#                 else:
+#                     opponent = PlayerRandom()
+#
+#                 game_count = int(input("How many games would you like to play: "))
+#                 g = Game(player, opponent)
+#                 for game in range(0, game_count):
+#                     g.playGame()
+#                 g.printResults([g], game_count)
+
+if __name__ == "__main__":
+    pygame.init()
+    screen = pygame.display.set_mode(screen_size)
+
+    p1 = ManualPlayer()
+    p2 = PlayerRandom()
+    g = Game(p1, p2)
+    g.drawBoard()
+
+    g.playGame()
