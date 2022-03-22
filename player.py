@@ -342,20 +342,10 @@ class ManualPlayer(Player):
 
     def findMove(self, move_history, selected_column):
         board = Board(move_history)
-        opts = " "
-        for c in range(7):
-            opts += (str(c+1) if board.isValidMove(c) else ' ')+"  "
-
-        while True:
-            if(board.turn == 1):
-                print("\n")
-                board.printBoard()
-                print("--------------------")
-                print(opts)
-            if board.isValidMove(selected_column):
-                return selected_column
-            else:
-                return None
+        if board.isValidMove(selected_column):
+            return selected_column
+        else:
+            return None
 
 class PlayerRandom(Player):
     label = "Random"

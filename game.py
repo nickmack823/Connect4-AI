@@ -3,25 +3,188 @@ import sys
 from player import *
 import time
 import pygame
+import pygame_menu
 import math
 
-BLUE = (0,0,255)
-BLACK = (0,0,0)
-RED = (255,0,0)
-YELLOW = (255,255,0)
+pygame.init()
+
+BLUE = (0, 0, 255)
+LIGHTBLUE = (0, 75, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+LIGHTGREY = (170, 170, 170)
+DARKGREY = (100, 100, 100)
 
 COLUMN_COUNT = 7
 ROW_COUNT = 6
-SQUARE_SIZE = 100
-RADIUS = int(SQUARE_SIZE/2 - 5)
+
+SQUARE_SIZE = 90
+RADIUS = int(SQUARE_SIZE / 2 - 7)
+
 width = COLUMN_COUNT * SQUARE_SIZE
-height = (ROW_COUNT + 1) * SQUARE_SIZE
+height = (ROW_COUNT + 2) * SQUARE_SIZE
 screen_size = (width, height)
+screen = pygame.display.set_mode(screen_size)
+screen.fill(LIGHTBLUE)
+
+titleFont = pygame.font.SysFont('calibri', 50)
+buttonFont = pygame.font.SysFont('arial', 30)
+
+
+gameCount = 0
+player1Selection = 1
+player2Selection = 2
+player1depth = None
+player2depth = None
+player1TestGamesMC = None
+player2TestGamesMC = None
+
+
+def showMainMenu():
+    menuFontSize = 60
+    menu = pygame_menu.Menu('Connect4 AI', width, height,
+                            theme=pygame_menu.themes.THEME_BLUE)
+    menu.add.button('Run Game(s)', showConfigureGameMenu, font_size=menuFontSize)
+    menu.add.button('Data', showData, font_size=menuFontSize)
+    menu.add.button('Quit', pygame_menu.events.EXIT, font_size=menuFontSize)
+    menu.mainloop(screen)
+
+
+def showConfigureGameMenu():
+    print("Showing Game Configuration Menu")
+
+    menu = pygame_menu.Menu('Connect4 AI', width, height,
+                            theme=pygame_menu.themes.THEME_BLUE)
+
+    def updateGameCount():
+        global gameCount
+        inputBox = menu.get_widget('gameCount')
+        if inputBox is not None:
+            gameCount = inputBox.get_value()
+        print(gameCount)
+
+    menu.add.text_input('Number of Games: ', textinput_id='gameCount', onchange=updateGameCount)
+
+    def updateP1Depth(input):
+        global player1depth
+        player1depth = int(input) if input.isnumeric() else None
+        print(player1depth)
+    def updateP2Depth(input):
+        global player2depth
+        player2depth = int(input) if input.isnumeric() else None
+        print(player2depth)
+    def updateP1TestGames(input):
+        global player1TestGamesMC
+        player1TestGamesMC = int(input) if input.isnumeric() else None
+        print(player1TestGamesMC)
+    def updateP2TestGames(input):
+        print("UPDATE P2 TEST GAMES")
+        global player2TestGamesMC
+        player2TestGamesMC = int(input) if input.isnumeric() else None
+        print(player2TestGamesMC)
+
+    menu.add.text_input('Maximum Depth (P1): ', textinput_id='depthP1', onchange=updateP1Depth).hide()
+    menu.add.text_input('Monte Carlo Test Games Per Move (P1): ', textinput_id='testGamesP1',
+                        onchange=updateP1TestGames).hide()
+    menu.add.text_input('Maximum Depth (P2): ', textinput_id='depthP2', onchange=updateP2Depth).hide()
+    menu.add.text_input('Monte Carlo Test Games Per Move (P2): ', textinput_id='testGamesP2',
+                        onchange=updateP2TestGames).hide()
+
+    def updateP1(name, value):
+        global player1Selection
+        player1Selection = value
+        # Show Minimax/Alpha-Beta setting
+        if value == 3 or value == 4:
+            menu.get_widget('depthP1').show()
+            menu.get_widget('testGamesP1').hide()
+        # Show Monte Carlo setting
+        elif value == 5:
+            menu.get_widget('testGamesP1').show()
+            menu.get_widget('depthP1').hide()
+
+    def updateP2(name, value):
+        global player2Selection
+        player2Selection = value
+        if value == 3 or value == 4:
+            menu.get_widget('depthP2').show()
+            menu.get_widget('testGamesP2').hide()
+        elif value == 5:
+            menu.get_widget('testGamesP2').show()
+            menu.get_widget('depthP2').hide()
+
+    menu.add.selector('Player 1 ',
+                      [('You', 1), ('Random', 2), ('MiniMax', 3), ('Alpha-Beta', 4), ('Monte Carlo', 5)],
+                      selector_id='p1', onchange=updateP1)
+
+    menu.add.selector('Player 2 ', [('Random', 2), ('MiniMax', 3), ('Alpha-Beta', 4), ('Monte Carlo', 5)],
+                      selector_id='p2', onchange=updateP2)
+
+
+    menu.add.button('', selection_effect=None)
+    menu.add.button('Play', startGames, font_size=50, button_id='play')
+    menu.mainloop(screen)
+
+
+def startGames():
+    print("Starting Game(s)")
+    if player1Selection is not None and player2Selection is not None:
+        p1Value = None
+        p2Value = None
+        if player1Selection == 3 or player1Selection == 4:
+            p1Value = player1depth
+            if p1Value is None:
+                return
+        elif player1Selection == 5:
+            p1Value = player1TestGamesMC
+            if p1Value is None:
+                return
+        if player2Selection == 3 or player2Selection == 4:
+            p2Value = player2depth
+            if p2Value is None:
+                return
+        elif player2Selection == 5:
+            p2Value = player2TestGamesMC
+            if p2Value is None:
+                return
+            print("P2 TEST GAMES: " + str(player2TestGamesMC))
+
+        p1 = Game.getPlayer(player1Selection, p1Value)
+        p2 = Game.getPlayer(player2Selection, p2Value)
+        game = Game(p1, p2)
+        game.playGame()
+
+
+def showData():
+    pass
+
+
+def drawBoard():
+    screen.fill(BLACK)
+    for c in range(COLUMN_COUNT):
+        for r in range(ROW_COUNT):
+            pygame.draw.rect(screen, BLUE, (c * SQUARE_SIZE, r * SQUARE_SIZE + SQUARE_SIZE*2, SQUARE_SIZE, SQUARE_SIZE))
+            pygame.draw.circle(screen, BLACK, (int(c * SQUARE_SIZE + SQUARE_SIZE / 2),
+                                               int(r * SQUARE_SIZE + SQUARE_SIZE*3 - SQUARE_SIZE / 2)), RADIUS)
+    pygame.display.update()
+
+
+def drawPiece(column, row, color):
+    pygame.draw.circle(screen, color, (int(column * SQUARE_SIZE + SQUARE_SIZE / 2),
+                                       int(row * SQUARE_SIZE + SQUARE_SIZE*3 - SQUARE_SIZE / 2)), RADIUS)
+    pygame.display.update()
+
+
+def drawHoveringPiece(x, color):
+    pygame.draw.rect(screen, BLACK, (0, 0, width, SQUARE_SIZE))
+    pygame.draw.circle(screen, color, (x, int(SQUARE_SIZE / 2)), RADIUS)
+    pygame.display.update()
+
 
 class Game:
 
-    def __init__(self, player1, player2, move_history=[]):
-        self.move_history = move_history
+    def __init__(self, player1, player2):
+        self.move_history = []
         self.player1 = player1
         self.player2 = player2
         self.total_moves_p1, self.total_moves_p2 = 0, 0
@@ -32,58 +195,62 @@ class Game:
 
     def playGame(self):
         board = self.board
+        drawBoard()
         self.player1.moves_considered, self.player2.moves_considered = 0, 0
         print(self.player1.label + " vs. " + self.player2.label)
 
         while not board.game_over:
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    sys.exit
-                elif event.type == pygame.MOUSEMOTION:
-                    if board.turn == 1:
-                        x = event.pos[0]
-                        self.drawHoveringPiece(x, RED)
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    move = None
-                    if board.turn == 1:
-                        print("Player 1 turn")
-                        x = event.pos[0]
-                        col = int(math.floor(x/SQUARE_SIZE))
-                        print(col)
-
-                        time_start = time.time()
-                        move = self.player1.findMove(board.move_history, col)
-                        # User attempts invalid move
-                        if move == None:
-                            continue
-                        time_end = time.time()
-                        self.time_elapsed_p1 += time_end - time_start
-                        self.drawPiece(move, board.getMoveRow(move), RED)
-                        print("Player 1 move: " + str(move))
-                    if board.turn == 2:
-                        print("Player 2 turn")
-                        time_start = time.time()
-                        move = self.player2.findMove(board.move_history)
-                        time_end = time.time()
-                        self.time_elapsed_p2 += time_end - time_start
-                        self.drawPiece(move, board.getMoveRow(move), YELLOW)
-                        print("Player 2 move: " + str(move))
+            move = None
+            if board.turn == 1:
+                time_start = time.time()
+                # If user playing manually
+                if player1Selection == 1:
+                    for event in pygame.event.get():
+                        if event.type == pygame.MOUSEMOTION:
+                            x = event.pos[0]
+                            drawHoveringPiece(x, RED)
+                        elif event.type == pygame.MOUSEBUTTONDOWN:
+                            x = event.pos[0]
+                            col = int(math.floor(x / SQUARE_SIZE))
+                            print(col)
+                            move = self.player1.findMove(self.player1, board.move_history, col)
+                            print("Move: " + str(move))
+                            # Move valid, continue onwards
+                            if move is not None:
+                                break
+                # AI as Player 1
+                else:
+                    move = self.player1.findMove(self.player1, board.move_history)
                     print(move)
-                    board.makeMove(move)
-                    board.printBoard()
+                if move is not None:
+                    time_end = time.time()
+                    self.time_elapsed_p1 += time_end - time_start
+                    drawPiece(move, board.getMoveRow(move), RED)
+                    print("Player 1 move: " + str(move))
+            if board.turn == 2:
+                print("Player 2 turn")
+                time_start = time.time()
+                move = self.player2.findMove(board.move_history)
+                time_end = time.time()
+                self.time_elapsed_p2 += time_end - time_start
+                print("Player 2 move: " + str(move))
+                drawPiece(move, board.getMoveRow(move), YELLOW)
+            if move is not None:
+                print(move)
+                board.makeMove(move)
+                board.printBoard()
 
-                    self.total_moves_p1 += self.player1.moves_considered
-                    self.total_moves_p2 += self.player2.moves_considered
+                self.total_moves_p1 += self.player1.moves_considered
+                self.total_moves_p2 += self.player2.moves_considered
 
-                    if board.winner == 1:
-                        print("Player 1 wins.")
-                    elif board.winner == 2:
-                        print("Player 2 wins.")
-                    elif board.winner == 0:
-                        print("Draw.")
-                    if board.winner is not None:
-                        self.recordResult(board.winner)
+                if board.winner == 1:
+                    print("Player 1 wins.")
+                elif board.winner == 2:
+                    print("Player 2 wins.")
+                elif board.winner == 0:
+                    print("Draw.")
+                if board.winner is not None:
+                    self.recordResult(board.winner)
 
     def recordResult(self, result):
         if result == 1:
@@ -97,9 +264,9 @@ class Game:
 
     def testSuite(self, n):
         randPlayer = PlayerRandom()
-        minimaxPlayer = PlayerMM(3, 1) # Uses depth 3 and heuristic 1 by default
-        alphaBetaPlayer = PlayerAB(3, 1) # Uses depth 3 and heuristic 1 by default
-        monteCarloPlayer = PlayerMC(100) # Performs 100 test games by default
+        minimaxPlayer = PlayerMM(3, 1)  # Uses depth 3 and heuristic 1 by default
+        alphaBetaPlayer = PlayerAB(3, 1)  # Uses depth 3 and heuristic 1 by default
+        monteCarloPlayer = PlayerMC(100)  # Performs 100 test games by default
         players = [randPlayer, minimaxPlayer, alphaBetaPlayer, monteCarloPlayer]
         games = []
         matchups = []
@@ -157,44 +324,30 @@ class Game:
             print("Average time spent per game: " + str(round(game.time_elapsed_p2 / n, 2)) + " seconds")
 
     @classmethod
-    def getPlayer(cls, selection):
+    def getPlayer(cls, selection, parameterValue):
+        player = None
         if selection == 1:
-            return "Minimax"
+            player = ManualPlayer
         elif selection == 2:
-            return "Alpha-Beta"
+            player = PlayerRandom
         elif selection == 3:
-            return "Monte Carlo"
+            player = PlayerMM(parameterValue)
         elif selection == 4:
-            return "Manual"
-        else:
-            return None
+            player = PlayerAB(parameterValue)
+        elif selection == 5:
+            print("MC value: " + str(parameterValue))
+            player = PlayerMC(parameterValue)
+        return player
 
     @classmethod
     def getOpponent(cls, selection):
         opponents = ["Random", "Minimax", "Alpha-Beta", "Monte Carlo"]
         for opponent in opponents:
-            if opponents.index(opponent) == selection-1:
+            if opponents.index(opponent) == selection - 1:
                 return opponent
         # Returns None if invalid input
         return None
 
-    def drawBoard(self):
-        for c in range(COLUMN_COUNT):
-            for r in range(ROW_COUNT):
-                pygame.draw.rect(screen, BLUE, (c*SQUARE_SIZE, r*SQUARE_SIZE + SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
-                pygame.draw.circle(screen, BLACK, (int(c*SQUARE_SIZE + SQUARE_SIZE/2),
-                                                   int(r*SQUARE_SIZE + SQUARE_SIZE + SQUARE_SIZE/2)), RADIUS)
-        pygame.display.update()
-
-    def drawPiece(self, column, row, color):
-        pygame.draw.circle(screen, color, (int(column * SQUARE_SIZE + SQUARE_SIZE / 2),
-                                           int(row * SQUARE_SIZE + SQUARE_SIZE + SQUARE_SIZE - SQUARE_SIZE / 2)), RADIUS)
-        pygame.display.update()
-
-    def drawHoveringPiece(self, x, color):
-        pygame.draw.rect(screen, BLACK, (0,0,width,SQUARE_SIZE))
-        pygame.draw.circle(screen, color, (x, int(SQUARE_SIZE/2)),RADIUS)
-        pygame.display.update()
 
 # if __name__ == "__main__":
 #     print("Welcome to Connect Four!")
@@ -254,12 +407,11 @@ class Game:
 #                 g.printResults([g], game_count)
 
 if __name__ == "__main__":
-    pygame.init()
-    screen = pygame.display.set_mode(screen_size)
+    showMainMenu()
 
     p1 = ManualPlayer()
     p2 = PlayerRandom()
     g = Game(p1, p2)
-    g.drawBoard()
 
-    g.playGame()
+    # g.drawBoard()
+    # g.playGame()

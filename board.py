@@ -24,8 +24,7 @@ class Board:
 
     'Move can be 0-6, with the value representing which column (0-6) to place a piece in.'
     def isValidMove(self, move):
-        moves = self.getPossibleMoves()
-        if move in moves:
+        if move in self.getPossibleMoves():
             return True
         else:
             return False
