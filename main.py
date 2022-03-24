@@ -1,18 +1,13 @@
-from sqlite3 import Error
-
 import pygame
 import pygame_menu
-import sqlite3
-import os
-
+import tkinter
 import game
 
+from database import Database
+from tkinter import *
+from tkinter.ttk import Treeview
+
 pygame.init()
-
-DATABASE_NAME = 'game_history.db'
-
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE_PATH = os.path.join(ROOT_DIR, 'database/' + DATABASE_NAME)
 
 BLUE = (0, 0, 255)
 LIGHTBLUE = (0, 75, 255)
@@ -34,8 +29,9 @@ screen_size = (width, height)
 screen = pygame.display.set_mode(screen_size)
 screen.fill(LIGHTBLUE)
 
-titleFont = pygame.font.SysFont('calibri', 50)
-buttonFont = pygame.font.SysFont('arial', 30)
+TITLE_FONT = pygame.font.SysFont('calibri', 50)
+BUTTON_FONT = pygame.font.SysFont('arial', 30)
+MAIN_MENU_FONT_SIZE = 60
 
 p1Selection = 1
 p2Selection = 2
@@ -44,14 +40,16 @@ gameCount = 0
 p1Depth, p2Depth, p1TestGamesMC, p2TestGamesMC = 0, 0, 0, 0
 p1Heuristic, p2Heuristic = 1, 1
 
+menu = None
+database = None
+
 
 def showMainMenu():
-    menuFontSize = 60
-    menu = pygame_menu.Menu('Connect4 AI', width, height,
+    menu = pygame_menu.Menu('Connect4 AI', screen.get_width(), screen.get_height(),
                             theme=pygame_menu.themes.THEME_BLUE)
-    menu.add.button('Run Game(s)', showConfigureGameMenu, font_size=menuFontSize)
-    menu.add.button('Data', showData, font_size=menuFontSize)
-    menu.add.button('Quit', pygame_menu.events.EXIT, font_size=menuFontSize)
+    menu.add.button('Run Game(s)', showConfigureGameMenu, font_size=MAIN_MENU_FONT_SIZE)
+    menu.add.button('Data', showDataWindow, font_size=MAIN_MENU_FONT_SIZE)
+    menu.add.button('Quit', pygame_menu.events.EXIT, font_size=MAIN_MENU_FONT_SIZE)
     menu.mainloop(screen)
 
 
@@ -60,6 +58,7 @@ def showConfigureGameMenu():
 
     menu = pygame_menu.Menu('Connect4 AI', width, height,
                             theme=pygame_menu.themes.THEME_BLUE)
+    menu.add.button('Back', showMainMenu, font_size=30, padding=20)
 
     def updateGameCount(input):
         global gameCount
@@ -137,20 +136,109 @@ def showConfigureGameMenu():
             menu.get_widget('heuristicP2').hide()
             menu.get_widget('testGamesP2').hide()
 
-    menu.add.selector('Player 1 ',
-                      [('You', 1), ('Random', 2), ('MiniMax', 3), ('Alpha-Beta', 4), ('Monte Carlo', 5)],
+    menu.add.selector('Player 1 ', [('You', 1), ('Random', 2), ('MiniMax', 3), ('Alpha-Beta', 4), ('Monte Carlo', 5)],
                       selector_id='p1', onchange=updateP1)
-
     menu.add.selector('Player 2 ', [('Random', 2), ('MiniMax', 3), ('Alpha-Beta', 4), ('Monte Carlo', 5)],
                       selector_id='p2', onchange=updateP2)
-
-    menu.add.button('', selection_effect=None)
-    menu.add.button('Play', startGames, font_size=50, button_id='play')
+    # menu.add.button('', selection_effect=None)
+    menu.add.button('Play', runGames, font_size=50, padding=25, button_id='play')
     menu.mainloop(screen)
 
 
-def showData():
-    pass
+def showDataWindow():
+    app = Tk()
+    frame_search = Frame(app)
+    frame_search.grid(row=0, column=0)
+
+    # lbl_search = Label(frame_search, text='Search by hostname',
+    #                    font=('bold', 12), pady=20)
+    # lbl_search.grid(row=0, column=0, sticky=W)
+    # hostname_search = StringVar()
+    # hostname_search_entry = Entry(frame_search, textvariable=hostname_search)
+    # hostname_search_entry.grid(row=0, column=1)
+    #
+    # lbl_search = Label(frame_search, text='Search by Query',
+    #                    font=('bold', 12), pady=20)
+    # lbl_search.grid(row=1, column=0, sticky=W)
+    # query_search = StringVar()
+    # query_search.set("Select * from routers where ram>1024")
+    # query_search_entry = Entry(frame_search, textvariable=query_search, width=40)
+    # query_search_entry.grid(row=1, column=1)
+    #
+    # frame_fields = Frame(app)
+    # frame_fields.grid(row=1, column=0)
+    # # hostname
+    # hostname_text = StringVar()
+    # hostname_label = Label(frame_fields, text='hostname', font=('bold', 12))
+    # hostname_label.grid(row=0, column=0, sticky=E)
+    # hostname_entry = Entry(frame_fields, textvariable=hostname_text)
+    # hostname_entry.grid(row=0, column=1, sticky=W)
+    # # BRAND
+    # brand_text = StringVar()
+    # brand_label = Label(frame_fields, text='Brand', font=('bold', 12))
+    # brand_label.grid(row=0, column=2, sticky=E)
+    # brand_entry = Entry(frame_fields, textvariable=brand_text)
+    # brand_entry.grid(row=0, column=3, sticky=W)
+    # # RAM
+    # ram_text = StringVar()
+    # ram_label = Label(frame_fields, text='RAM', font=('bold', 12))
+    # ram_label.grid(row=1, column=0, sticky=E)
+    # ram_entry = Entry(frame_fields, textvariable=ram_text)
+    # ram_entry.grid(row=1, column=1, sticky=W)
+    # # FLASH
+    # flash_text = StringVar()
+    # flash_label = Label(frame_fields, text='Flash', font=('bold', 12), pady=20)
+    # flash_label.grid(row=1, column=2, sticky=E)
+    # flash_entry = Entry(frame_fields, textvariable=flash_text)
+    # flash_entry.grid(row=1, column=3, sticky=W)
+    #
+    # frame_router = Frame(app)
+    # frame_router.grid(row=4, column=0, columnspan=4, rowspan=6, pady=20, padx=20)
+    #
+    # columns = ['id', 'Player1', 'Player2', 'Winner']
+    # router_tree_view = Treeview(frame_router, columns=columns, show="headings")
+    # router_tree_view.column("id", width=30)
+    # for col in columns[1:]:
+    #     router_tree_view.column(col, width=120)
+    #     router_tree_view.heading(col, text=col)
+    # router_tree_view.bind('<<TreeviewSelect>>', None)
+    # router_tree_view.pack(side="left", fill="y")
+    # scrollbar = Scrollbar(frame_router, orient='vertical')
+    # scrollbar.configure(command=router_tree_view.yview)
+    # scrollbar.pack(side="right", fill="y")
+    # router_tree_view.config(yscrollcommand=scrollbar.set)
+    #
+    # frame_btns = Frame(app)
+    # frame_btns.grid(row=3, column=0)
+    #
+    # add_btn = Button(frame_btns, text='Add Router', width=12, command=None)
+    # add_btn.grid(row=0, column=0, pady=20)
+    #
+    # remove_btn = Button(frame_btns, text='Remove Router',
+    #                     width=12, command=None)
+    # remove_btn.grid(row=0, column=1)
+    #
+    # update_btn = Button(frame_btns, text='Update Router',
+    #                     width=12, command=None)
+    # update_btn.grid(row=0, column=2)
+    #
+    # clear_btn = Button(frame_btns, text='Clear Input',
+    #                    width=12, command=None)
+    # clear_btn.grid(row=0, column=3)
+    #
+    # search_btn = Button(frame_search, text='Search',
+    #                     width=12, command=None)
+    # search_btn.grid(row=0, column=2)
+    #
+    # search_query_btn = Button(frame_search, text='Search Query',
+    #                           width=12, command=None)
+    # search_query_btn.grid(row=1, column=2)
+    #
+    # app.title('Connect4 AI (Database)')
+    # app.geometry('700x550')
+    #
+    # # Start program
+    # app.mainloop()
 
 
 def drawBoard():
@@ -176,7 +264,7 @@ def drawHoveringPiece(x, color):
     pygame.display.update()
 
 
-def startGames():
+def runGames():
     print("Starting Game(s)")
     if gameCount >= 1:
         p1 = getPlayer1()
@@ -188,7 +276,8 @@ def startGames():
             g = game.Game(p1, p2)
             g.playGame()
             games.append(g)
-        printResults(games, gameCount)
+        for g in games:
+            database.insertGame(g)
 
 
 def getPlayer1():
@@ -258,54 +347,11 @@ def printResults(games, n):
 
     print(p1 + " vs. " + p2 + " (" + str(n) + " games)")
     print("OVERALL RESULTS: " + str(finalResults))
-
-
-def createDatabaseConnection():
-    """Creates a connection to an SQLite database"""
-    connection = None
-    print("CREAT")
-    try:
-        print(DATABASE_PATH)
-        connection = sqlite3.connect(DATABASE_PATH)
-        print(sqlite3.version)
-    except Error as e:
-        print(e)
-    finally:
-        if connection:
-            connection.close()
-    return connection
-
-def createDatabaseTable(conn, create_table_sql):
-    """Creates a table from the createTableSQL statement
-    :param conn: Connection object
-    :param create_table_sql: A CREATE TABLE SQL statement
-    :return:
-    """
-    try:
-        cursor = conn.cursor()
-        cursor.execute(create_table_sql)
-    except Error as e:
-        print(e)
-
-def createGamesTable():
-    conn = createDatabaseConnection()
-    sql_create_games_table = """ CREATE TABLE IF NOT EXISTS games (
-                                                id integer PRIMARY KEY,
-                                                name text NOT NULL,
-                                                player1 text,
-                                                player2 text,
-                                                p1_total_moves_considered integer,
-                                                p2_total_moves_considered integer,
-                                                p1_total_time_elapsed real,
-                                                p2_total_time_elapsed real,
-                                                winner text
-                                            ); """
-    if conn is not None:
-        createDatabaseTable(conn, sql_create_games_table)
-    else:
-        print("Error: Cannot create database connection.")
+    print("Moves made P1: " + str(game.moves_made_p1))
+    print("Moves made P2: " + str(game.moves_made_p2))
 
 
 if __name__ == '__main__':
-    createGamesTable()
+    database = Database()
+    database.selectAllGames()
     showMainMenu()

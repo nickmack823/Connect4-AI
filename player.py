@@ -337,6 +337,30 @@ class Player:
             h += 10
         return h
 
+    def getDepth(self):
+        if self.label == "Minimax" or self.label == "Alpha-Beta":
+            return self.max_depth
+        else:
+            return 'N/A'
+
+    def getHeuristicName(self):
+        h = self.heuristic if self.label == "Minimax" or self.label == "Alpha-Beta" else None
+        if h is None:
+            return 'N/A'
+        if h == 1:
+            return 'Adjacent Pieces'
+        if h == 2:
+            return 'Piece Locations'
+        if h == 3:
+            return 'Connected Pieces'
+
+    def getMCTestTotal(self):
+        t = self.test_total if self.label == "Monte Carlo" else None
+        if t is None:
+            return 'N/A'
+        else:
+            return t
+
 class ManualPlayer(Player):
     label = "Manual"
 
@@ -481,6 +505,7 @@ class PlayerMC(Player):
     def __init__(self, test_total):
         # Number of random games to play per possible move
         self.test_total = test_total
+        self.max_depth = None
 
     # Algorithm: for each valid move, make the move, then make random moves until game is over. Repeat some number of
     # times for each move, recording each win and loss for that move. Then, pick the move with the best win/loss

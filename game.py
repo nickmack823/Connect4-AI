@@ -1,9 +1,6 @@
-import sys
-
 import main
-from player import *
 import time
-import math
+from player import *
 
 
 class Game:
@@ -13,6 +10,7 @@ class Game:
         self.player1 = player1
         self.player2 = player2
         self.moves_considered_p1, self.moves_considered_p2 = 0, 0
+        self.moves_made_p1, self.moves_made_p2 = 0, 0
         self.time_elapsed_p1, self.time_elapsed_p2 = 0, 0
         self.total_time = 0
         self.results = {'P1: ' + player1.label: 0, 'P2: ' + player2.label: 0, 'Draw': 0}
@@ -38,40 +36,35 @@ class Game:
                         elif event.type == main.pygame.MOUSEBUTTONDOWN:
                             x = event.pos[0]
                             col = int(math.floor(x / main.SQUARE_SIZE))
-                            print(col)
                             move = self.player1.findMove(board.move_history, col)
-                            print("Move: " + str(move))
                             # Move valid, continue onwards
                             if move is not None:
                                 break
                 # AI as Player 1
                 else:
                     move = self.player1.findMove(board.move_history)
-                    print(move)
                 if move is not None:
                     time_end_p1 = time.time()
-                    print(time_start_p1)
-                    print(time_end_p1)
                     self.time_elapsed_p1 += time_end_p1 - time_start_p1
-                    print(self.time_elapsed_p1)
+                    self.moves_considered_p1 += self.player1.moves_considered
+                    self.moves_made_p1 += 1
                     main.drawPiece(move, board.getMoveRow(move), main.RED)
                     time_start_p1 = None
-                    print("Player 1 move: " + str(move))
+                    # print("Player 1 move: " + str(move))
             if board.turn == 2:
-                print("Player 2 turn")
+                # print("Player 2 turn")
                 time_start_p2 = time.time()
                 move = self.player2.findMove(board.move_history)
                 time_end_p2 = time.time()
                 self.time_elapsed_p2 += time_end_p2 - time_start_p2
-                print("Player 2 move: " + str(move))
+                self.moves_considered_p2 += self.player2.moves_considered
+                self.moves_made_p2 += 1
+                # print("Player 2 move: " + str(move))
                 main.drawPiece(move, board.getMoveRow(move), main.YELLOW)
             if move is not None:
                 # print(move)
                 board.makeMove(move)
                 # board.printBoard()
-
-                self.moves_considered_p1 += self.player1.moves_considered
-                self.moves_considered_p2 += self.player2.moves_considered
 
                 if board.winner == 1:
                     print("Player 1 wins.")
@@ -137,4 +130,3 @@ class Game:
         elif selection == 5:
             player = PlayerMC(depth)
         return player
-
