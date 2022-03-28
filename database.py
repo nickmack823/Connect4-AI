@@ -2,7 +2,7 @@ import os
 import sqlite3
 from sqlite3 import Error
 
-DATABASE_NAME = 'game_history.db'
+DATABASE_NAME = 'game_data.db'
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(ROOT_DIR, 'database/' + DATABASE_NAME)
 
@@ -100,10 +100,8 @@ class Database:
         self.selectAllGames()
 
     def selectAllGames(self):
-        print("SELECT")
+        print("SELECTING ALL")
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM games")
         games = cursor.fetchall()
-        print(games)
-        for game in games:
-            print(game)
+        return games

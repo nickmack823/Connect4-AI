@@ -43,6 +43,11 @@ p1Heuristic, p2Heuristic = 1, 1
 menu = None
 database = None
 
+# Search paramters
+p1Search, p2Search, p1DepthSearch, p2DepthSearch = None, None, None, None
+p1HeuristicSearch, p2HeuristicSearch, p1TestGamesMCSearch, p2TestGamesMCSearch = None, None, None, None
+p1DepthEquality, p2DepthEquality, p1MCEquality, p2MCEquality = None, None, None, None
+
 
 def showMainMenu():
     menu = pygame_menu.Menu('Connect4 AI', screen.get_width(), screen.get_height(),
@@ -146,99 +151,132 @@ def showConfigureGameMenu():
 
 
 def showDataWindow():
-    app = Tk()
-    frame_search = Frame(app)
-    frame_search.grid(row=0, column=0)
+    root = Tk()
+    createSearchWidgets(root)
 
-    # lbl_search = Label(frame_search, text='Search by hostname',
-    #                    font=('bold', 12), pady=20)
-    # lbl_search.grid(row=0, column=0, sticky=W)
-    # hostname_search = StringVar()
-    # hostname_search_entry = Entry(frame_search, textvariable=hostname_search)
-    # hostname_search_entry.grid(row=0, column=1)
-    #
-    # lbl_search = Label(frame_search, text='Search by Query',
-    #                    font=('bold', 12), pady=20)
-    # lbl_search.grid(row=1, column=0, sticky=W)
-    # query_search = StringVar()
-    # query_search.set("Select * from routers where ram>1024")
-    # query_search_entry = Entry(frame_search, textvariable=query_search, width=40)
-    # query_search_entry.grid(row=1, column=1)
-    #
-    # frame_fields = Frame(app)
-    # frame_fields.grid(row=1, column=0)
-    # # hostname
-    # hostname_text = StringVar()
-    # hostname_label = Label(frame_fields, text='hostname', font=('bold', 12))
-    # hostname_label.grid(row=0, column=0, sticky=E)
-    # hostname_entry = Entry(frame_fields, textvariable=hostname_text)
-    # hostname_entry.grid(row=0, column=1, sticky=W)
-    # # BRAND
-    # brand_text = StringVar()
-    # brand_label = Label(frame_fields, text='Brand', font=('bold', 12))
-    # brand_label.grid(row=0, column=2, sticky=E)
-    # brand_entry = Entry(frame_fields, textvariable=brand_text)
-    # brand_entry.grid(row=0, column=3, sticky=W)
-    # # RAM
-    # ram_text = StringVar()
-    # ram_label = Label(frame_fields, text='RAM', font=('bold', 12))
-    # ram_label.grid(row=1, column=0, sticky=E)
-    # ram_entry = Entry(frame_fields, textvariable=ram_text)
-    # ram_entry.grid(row=1, column=1, sticky=W)
-    # # FLASH
-    # flash_text = StringVar()
-    # flash_label = Label(frame_fields, text='Flash', font=('bold', 12), pady=20)
-    # flash_label.grid(row=1, column=2, sticky=E)
-    # flash_entry = Entry(frame_fields, textvariable=flash_text)
-    # flash_entry.grid(row=1, column=3, sticky=W)
-    #
-    # frame_router = Frame(app)
-    # frame_router.grid(row=4, column=0, columnspan=4, rowspan=6, pady=20, padx=20)
-    #
-    # columns = ['id', 'Player1', 'Player2', 'Winner']
-    # router_tree_view = Treeview(frame_router, columns=columns, show="headings")
-    # router_tree_view.column("id", width=30)
-    # for col in columns[1:]:
-    #     router_tree_view.column(col, width=120)
-    #     router_tree_view.heading(col, text=col)
-    # router_tree_view.bind('<<TreeviewSelect>>', None)
-    # router_tree_view.pack(side="left", fill="y")
-    # scrollbar = Scrollbar(frame_router, orient='vertical')
-    # scrollbar.configure(command=router_tree_view.yview)
-    # scrollbar.pack(side="right", fill="y")
-    # router_tree_view.config(yscrollcommand=scrollbar.set)
-    #
-    # frame_btns = Frame(app)
-    # frame_btns.grid(row=3, column=0)
-    #
-    # add_btn = Button(frame_btns, text='Add Router', width=12, command=None)
-    # add_btn.grid(row=0, column=0, pady=20)
-    #
-    # remove_btn = Button(frame_btns, text='Remove Router',
-    #                     width=12, command=None)
-    # remove_btn.grid(row=0, column=1)
-    #
-    # update_btn = Button(frame_btns, text='Update Router',
-    #                     width=12, command=None)
-    # update_btn.grid(row=0, column=2)
-    #
-    # clear_btn = Button(frame_btns, text='Clear Input',
-    #                    width=12, command=None)
-    # clear_btn.grid(row=0, column=3)
-    #
-    # search_btn = Button(frame_search, text='Search',
-    #                     width=12, command=None)
-    # search_btn.grid(row=0, column=2)
-    #
-    # search_query_btn = Button(frame_search, text='Search Query',
-    #                           width=12, command=None)
-    # search_query_btn.grid(row=1, column=2)
-    #
-    # app.title('Connect4 AI (Database)')
-    # app.geometry('700x550')
-    #
-    # # Start program
-    # app.mainloop()
+    games_to_show = database.selectAllGames()
+    createTreeView(root, games_to_show)
+
+    frame_btns = Frame(root)
+    frame_btns.grid(row=3, column=2)
+
+    search_btn = Button(frame_btns, text='Search',
+                        width=12, command=None)
+    search_btn.grid(row=0, column=0)
+
+    root.title('Connect4 AI (Database)')
+    root.geometry('1300x550')
+
+    # Start program
+    root.mainloop()
+
+
+def createSearchWidgets(root):
+    labels = ['Player 1', 'Player 2', 'Depth (P1)', 'Depth (P2)', 'Heuristic (P1)', 'Heuristic (P2)',
+              'Monte Carlo Test Games (P1)', 'Monte Carlo Test Games (P2)']
+    equalities = ['=', '>', '>=', '<', '<=']
+    row, column = 0, 0
+    for label in labels:
+        print(label)
+        i = labels.index(label)
+        print(i % 2)
+        if (i + 1) % 2 != 0:
+            column = 0
+        else:
+            column = 1
+        f = Frame(root)
+        f.grid(row=row, column=column)
+
+        l = Label(f, text=label, font=('bold', 10), pady=20, padx=10)
+        l.grid(row=row, column=column, sticky=W)
+
+        global p1Search, p2Search, p1DepthSearch, p2DepthSearch, p1DepthEquality, p2DepthEquality
+        global p1HeuristicSearch, p2HeuristicSearch, p1TestGamesMCSearch, p2TestGamesMCSearch
+        if 'Player' in label:
+            choices = ['Manual', 'Random', 'Minimax', 'Alpha-Beta', 'Monte Carlo']
+            if '1' in label:
+                p1Search = StringVar()
+                menu = OptionMenu(f, p1Search, *choices)
+            else:
+                p2Search = StringVar()
+                menu = OptionMenu(f, p2Search, *choices)
+            menu.grid(row=row, column=column, padx=(75, 0))
+        elif 'Depth' in label:
+            if 'P1' in label:
+                p1DepthSearch = IntVar()
+                p1DepthEquality = StringVar()
+                p1DepthEquality.set('=')
+                search_entry = Entry(f, textvariable=p1DepthSearch)
+                menu = OptionMenu(f, p1DepthEquality, *equalities)
+            else:
+                p2DepthSearch = IntVar()
+                p2DepthEquality = StringVar()
+                p2DepthEquality.set('=')
+                search_entry = Entry(f, textvariable=p2DepthSearch)
+                menu = OptionMenu(f, p2DepthEquality, *equalities)
+            menu.grid(row=row, column=column, padx=(90, 10))
+            search_entry.grid(row=row, column=column + 1)
+        elif 'Heuristic' in label:
+            choices = ['None', 'Adjacent Pieces', 'Piece Locations', 'Connected Pieces']
+            if 'P1' in label:
+                p1HeuristicSearch = StringVar()
+                p1HeuristicSearch.set('None')
+                menu = OptionMenu(f, p1HeuristicSearch, *choices)
+            else:
+                p2HeuristicSearch = StringVar()
+                p2HeuristicSearch.set('None')
+                menu = OptionMenu(f, p2HeuristicSearch, *choices)
+            menu.grid(row=row, column=column, padx=(100, 0))
+        elif 'Monte Carlo' in label:
+            if 'P1' in label:
+                p1TestGamesMCSearch = IntVar()
+                p1MCEquality = StringVar()
+                menu = OptionMenu(f, p1MCEquality, *equalities)
+                search_entry = Entry(f, textvariable=p1TestGamesMCSearch)
+            else:
+                p2TestGamesMCSearch = IntVar()
+                p2MCEquality = StringVar()
+                menu = OptionMenu(f, p2MCEquality, *equalities)
+                search_entry = Entry(f, textvariable=p2TestGamesMCSearch)
+            menu.grid(row=row, column=column, padx=(190, 10))
+            search_entry.grid(row=row, column=column + 1)
+        # print(row)
+        # print(column)
+        if column == 1:
+            row += 1
+
+def createTreeView(root, items):
+    frame_data = Frame(root)
+    frame_data.grid(row=4, column=0, columnspan=100, rowspan=600, pady=20, padx=20)
+
+    columns = ['id', 'P1', 'P2', 'Games', 'Win % (P1)', 'Win % (P2)', 'Depth (P1)', 'Depth (P2)', 'Heuristic (P1)',
+               'Heuristic (P2)', 'MC Test Games (P1)', 'MC Test Games (P2)']
+    matchup_tree_view = Treeview(frame_data, columns=columns, show="headings")
+    matchup_tree_view.column("id", width=30)
+    for col in columns[1:]:
+        matchup_tree_view.column(col, width=90)
+        matchup_tree_view.heading(col, text=col)
+    matchup_tree_view.bind('<<TreeviewSelect>>', None)
+    matchup_tree_view.pack(side="left", fill="y")
+    v_scroll = Scrollbar(frame_data, orient='vertical')
+    v_scroll.configure(command=matchup_tree_view.yview)
+    v_scroll.pack(side="right", fill="y")
+    matchup_tree_view.config(yscrollcommand=v_scroll.set)
+
+    matchups = []
+    for item in items:
+        i = items.index(item)
+        id = item[0]
+        p1 = item[1]
+        p2 = item[2]
+        matchup = p1 + ' vs. ' + p2
+        if matchup not in matchups:
+            matchups.append(p1 + ' vs. ' + p2)
+        print(item)
+
+
+        matchup_tree_view.insert(parent='', index=i, iid=id, text='', values=(id, 'Manual'))
+    print(matchups)
 
 
 def drawBoard():
@@ -353,5 +391,6 @@ def printResults(games, n):
 
 if __name__ == '__main__':
     database = Database()
+    database.createGamesTable()
     database.selectAllGames()
     showMainMenu()
