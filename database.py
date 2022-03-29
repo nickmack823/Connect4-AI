@@ -152,18 +152,26 @@ class Database:
             p1_total_moves += g.moves_made_p1
             p2_total_moves += g.moves_made_p2
 
-        m = self.selectMatchup(matchup)
+        p1depth = game.player1.getDepth()
+        p2depth = game.player2.getDepth()
+        p1H = game.player1.getHeuristicName()
+        p2H = game.player2.getHeuristicName()
+        p1MC = game.player1.getMCTestTotal()
+        p2MC = game.player2.getMCTestTotal()
+        core_values = (matchup, p1depth, p1H, p1MC, p2depth, p2H, p2MC)
+
+        existing_matchup = self.selectMatchup(core_values)
+        print("EXISTING MATCHUP:")
+        print(existing_matchup)
+        matchup_values = (
+            n, wins['P1: ' + p1], wins['P2: ' + p2], p1_total_time, p1_total_moves_considered,
+            p1_total_moves, p1depth, p1H, p1MC, p2_total_time, p2_total_moves_considered,
+            p2_total_moves, p2depth, p2H, p2MC, matchup)
         # If matchup already in matchups table, update it
-        if len(m) != 0:
-            values = (n, wins['P1: ' + p1], wins['P2: ' + p2], p1_total_time, p1_total_moves_considered,
-                      p1_total_moves, p2_total_time, p2_total_moves_considered,
-                      p2_total_moves, matchup)
-            self.updateMatchup(values)
-            m = self.selectMatchup(matchup)
+        if len(existing_matchup) != 0:
+            self.updateMatchup(matchup_values)
         else:
-            cursor = self.conn.cursor()
-            sql_insertion_matchup = """ INSERT INTO matchups ( matchup,
-                                                                    games,
+            sql_insertion_matchup = """ INSERT INTO matchups (games,
                                                                     p1_victories,
                                                                     p2_victories,
                                                                     p1_total_time_elapsed,
@@ -177,20 +185,10 @@ class Database:
                                                                     p2_total_moves_made,
                                                                     p2_depth,
                                                                     p2_heuristic,
-                                                                    p2_monte_carlo_test_games)
+                                                                    p2_monte_carlo_test_games,
+                                                                    matchup)
                                                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
-            p1depth = game.player1.getDepth()
-            p2depth = game.player2.getDepth()
-            p1H = game.player1.getHeuristicName()
-            p2H = game.player2.getHeuristicName()
-            p1MC = game.player1.getMCTestTotal()
-            p2MC = game.player2.getMCTestTotal()
-
-            # Values for insertion
-            matchup_values = (
-                matchup, n, wins['P1: ' + p1], wins['P2: ' + p2], p1_total_time, p1_total_moves_considered,
-                p1_total_moves, p1depth, p1H, p1MC, p2_total_time, p2_total_moves_considered,
-                p2_total_moves, p2depth, p2H, p2MC)
+            cursor = self.conn.cursor()
             cursor.execute(sql_insertion_matchup, matchup_values)
             self.conn.commit()
 
@@ -201,11 +199,19 @@ class Database:
         results = cursor.fetchall()
         return results
 
-    def selectMatchup(self, matchup):
-        print("SELECTING ALL FROM matchups WHERE matchup=" + matchup)
+    def selectMatchup(self, values):
+        print("SELECTING ALL FROM matchups WHERE matchup has values: " + str(values))
         cursor = self.conn.cursor()
-        sql_selection = 'SELECT * FROM matchups WHERE matchup=?'
-        cursor.execute(sql_selection, (matchup,))
+        sql_selection = """SELECT * FROM matchups 
+                           WHERE matchup = ? AND
+                           p1_depth = ? AND
+                           p1_heuristic = ? AND
+                           p1_monte_carlo_test_games = ? AND
+                           p2_depth = ? AND
+                           p2_heuristic = ? AND
+                           p2_monte_carlo_test_games = ?
+                        """
+        cursor.execute(sql_selection, values)
         row = cursor.fetchall()
         return row
 
@@ -219,9 +225,15 @@ class Database:
                             p1_total_time_elapsed = ? ,
                             p1_total_moves_considered = ? ,
                             p1_total_moves_made = ? ,
+                            p1_depth = ? ,
+                            p1_heuristic = ? ,
+                            p1_monte_carlo_test_games = ? ,
                             p2_total_time_elapsed = ? ,
                             p2_total_moves_considered = ? ,
                             p2_total_moves_made = ? 
+                            p2_depth = ? ,
+                            p2_heuristic = ? ,
+                            p2_monte_carlo_test_games = ?
                         WHERE matchup = ?
                         """
 

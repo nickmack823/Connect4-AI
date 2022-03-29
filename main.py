@@ -42,7 +42,6 @@ p1Heuristic, p2Heuristic = 1, 1
 
 # Root Tkinter view
 root = None
-
 menu = None
 database = None
 
@@ -53,6 +52,10 @@ p1DepthEquality, p2DepthEquality, p1MCEquality, p2MCEquality = None, None, None,
 
 # Data selection value
 dataSelection = 1
+# TreeViews
+game_view, matchup_view = None, None
+# Scrolling
+scrolling = False
 
 
 def showMainMenu():
@@ -245,12 +248,12 @@ def createSearchWidgets():
             row += 1
 
 def createButtons():
-    frame_btns = Frame(root)
-    frame_btns.grid(row=3, column=2)
+    frame_buttons = Frame(root)
+    frame_buttons.grid(row=3, column=2)
 
-    search_btn = Button(frame_btns, text='Search',
+    search_button = Button(frame_buttons, text='Search',
                         width=12, command=None)
-    search_btn.grid(row=0, column=0)
+    search_button.grid(row=0, column=0)
 
     data_selection = IntVar()
 
@@ -258,9 +261,9 @@ def createButtons():
         selection = data_selection.get()
         createTreeView(selection)
 
-    radio_button_1 = Radiobutton(frame_btns, text='Show All Games', variable=data_selection, value=1,
+    radio_button_1 = Radiobutton(frame_buttons, text='Show All Games', variable=data_selection, value=1,
                                  command=changeData)
-    radio_button_2 = Radiobutton(frame_btns, text='Show Matchups', variable=data_selection, value=2,
+    radio_button_2 = Radiobutton(frame_buttons, text='Show Matchups', variable=data_selection, value=2,
                                  command=changeData)
 
     radio_button_1.grid(row=0, column=1)
@@ -277,60 +280,89 @@ def createTreeView(data_selection):
     items = data[1]
 
     frame_data = Frame(root)
-    frame_data.grid(row=4, column=0, columnspan=len(columns), rowspan=600, pady=20, padx=20)
+    frame_data.grid(row=4, column=0, columnspan=len(columns), rowspan=1, pady=20, padx=20)
 
-    data_tree_view = Treeview(frame_data, columns=columns, show="headings")
-    data_tree_view.column("id", width=30)
-
+    tree_view = Treeview(frame_data, columns=columns, show="headings")
+    tree_view.column("id", width=30)
 
     for col in columns[1:]:
-        data_tree_view.column(col, width=40)
-        data_tree_view.heading(col, text=col)
-    data_tree_view.update()
-    for col in columns[1:]:
-        data_tree_view.column(col, width=100)
+        tree_view.column(col, width=80, minwidth=125, stretch=True)
+        tree_view.heading(col, text=col)
 
-    data_tree_view.bind('<<TreeviewSelect>>', None)
-    data_tree_view.pack(side="left", fill="y")
-    v_scroll = Scrollbar(frame_data, orient='vertical')
-    v_scroll.configure(command=data_tree_view.yview)
-    v_scroll.pack(side="right", fill="y")
-    h_scroll = Scrollbar(root, orient='horizontal')
-    h_scroll.configure(command=data_tree_view.xview)
-    h_scroll.grid(row=5, column=0)
-    data_tree_view.config(yscrollcommand=h_scroll.set)
-    data_tree_view.config(yscrollcommand=v_scroll.set)
 
+
+    tree_view.bind('<<TreeviewSelect>>', None)
+    tree_view.pack(side="left", fill="y")
+    createScrollbars(tree_view, frame_data)
+
+    index = 0
     for item in items:
         print(item)
         values_list = []
         id = item[0]
+        if tree_view.exists(id):
+            continue
+        game_count = item[2]
         for value in item:
-            print(value)
-            values_list.append(value)
+            if 'Avg.' in columns[index]:
+                avg_value = round(value/game_count, 2)
+                values_list.append(avg_value)
+            else:
+                values_list.append(value)
+            index += 1
+
         values = tuple(values_list)
-        data_tree_view.insert(parent='', iid=id, index='end', values=values)
+        tree_view.insert(parent='', iid=id, index='end', values=values)
+        index = 0
+    if data_selection == 1:
+        global game_view
+        global matchup_view
+        game_view = tree_view
+        if matchup_view is not None:
+            matchup_view.destroy()
+    else:
+        matchup_view = tree_view
+        game_view.destroy()
 
 
 def getTreeViewDetails(data_selection):
-    print("DATA SELE" + str(data_selection))
-
     # 1 = Show All Games
     if data_selection == 1:
         columns = ['id', 'Player 1', 'Player 2', 'Winner', 'Time Elapsed (P1)', 'Moves Considered (P1)',
-                   'Moves Made (P1)', 'Time Elapsed (P2)', 'Moves Considered (P2)', 'Moves Made (P2)', 'Depth (P1)',
-                   'Depth (P2)', 'Heuristic (P1)', 'Heuristic (P2)', 'MC Test Games (P1)', 'MC Test Games (P2)']
+                   'Moves Made (P1)', 'Depth (P1)', 'Heuristic (P1)', 'MC Test Games (P1)', 'Time Elapsed (P2)',
+                   'Moves Considered (P2)', 'Moves Made (P2)', 'Depth (P2)', 'Heuristic (P2)', 'MC Test Games (P2)']
         items = database.selectAll('games')
         return columns, items
     # 2 = Show All Matchups
     elif data_selection == 2:
         columns = ['id', 'Matchup', 'Games', 'Wins (P1)', 'Wins (P2)', 'Avg. Time Elapsed (P1)',
-                   'Avg. Moves Considered (P1)', 'Avg. Moves Made (P1)', 'Avg. Time Elapsed (P2)',
-                   'Avg. Moves Considered (P2)', 'Avg. Moves Made (P2)', 'Depth (P1)', 'Depth (P2)', 'Heuristic (P1)',
-                   'Heuristic (P2)', 'MC Test Games (P1)', 'MC Test Games (P2)']
+                   'Avg. Moves Considered (P1)', 'Avg. Moves Made (P1)', 'Depth (P1)', 'Heuristic (P1)',
+                   'MC Test Games (P1)', 'Avg. Time Elapsed (P2)', 'Avg. Moves Considered (P2)', 'Avg. Moves Made (P2)',
+                   'Depth (P2)', 'Heuristic (P2)', 'MC Test Games (P2)']
         items = database.selectAll('matchups')
         return columns, items
 
+def createScrollbars(connected_widget, frame):
+    v_scroll = Scrollbar(frame, orient='vertical')
+    v_scroll.configure(command=connected_widget.yview)
+    v_scroll.pack(side="right", fill="y")
+    h_scroll = Scrollbar(root, orient='horizontal', repeatdelay=0)
+    h_scroll.configure(command=connected_widget.xview)
+    h_scroll.grid(row=5, column=1)
+    connected_widget.config(xscrollcommand=h_scroll.set)
+    connected_widget.config(yscrollcommand=v_scroll.set)
+
+    def scroll(arrow, *args):
+        if arrow == "arrow1":
+            connected_widget.tk.call(connected_widget._w, 'xview', 'scroll', -20, 'units')
+        if arrow == "arrow2":
+            connected_widget.tk.call(connected_widget._w, 'xview', 'scroll', 20, 'units')
+
+    def start_scrolling(event):
+        scroll(h_scroll.identify(event.x, event.y))
+
+    h_scroll.bind("<Button-1>", start_scrolling)
+    h_scroll.bind('<ButtonRelease-1>', start_scrolling)
 
 def drawBoard():
     screen.fill(BLACK)
