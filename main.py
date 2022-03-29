@@ -40,13 +40,19 @@ gameCount = 0
 p1Depth, p2Depth, p1TestGamesMC, p2TestGamesMC = 0, 0, 0, 0
 p1Heuristic, p2Heuristic = 1, 1
 
+# Root Tkinter view
+root = None
+
 menu = None
 database = None
 
-# Search paramters
+# Search parameters
 p1Search, p2Search, p1DepthSearch, p2DepthSearch = None, None, None, None
 p1HeuristicSearch, p2HeuristicSearch, p1TestGamesMCSearch, p2TestGamesMCSearch = None, None, None, None
 p1DepthEquality, p2DepthEquality, p1MCEquality, p2MCEquality = None, None, None, None
+
+# Data selection value
+dataSelection = 1
 
 
 def showMainMenu():
@@ -151,18 +157,11 @@ def showConfigureGameMenu():
 
 
 def showDataWindow():
+    global root
     root = Tk()
-    createSearchWidgets(root)
+    createSearchWidgets()
+    createButtons()
 
-    games_to_show = database.selectAllGames()
-    createTreeView(root, games_to_show)
-
-    frame_btns = Frame(root)
-    frame_btns.grid(row=3, column=2)
-
-    search_btn = Button(frame_btns, text='Search',
-                        width=12, command=None)
-    search_btn.grid(row=0, column=0)
 
     root.title('Connect4 AI (Database)')
     root.geometry('1300x550')
@@ -171,7 +170,7 @@ def showDataWindow():
     root.mainloop()
 
 
-def createSearchWidgets(root):
+def createSearchWidgets():
     labels = ['Player 1', 'Player 2', 'Depth (P1)', 'Depth (P2)', 'Heuristic (P1)', 'Heuristic (P2)',
               'Monte Carlo Test Games (P1)', 'Monte Carlo Test Games (P2)']
     equalities = ['=', '>', '>=', '<', '<=']
@@ -245,38 +244,92 @@ def createSearchWidgets(root):
         if column == 1:
             row += 1
 
-def createTreeView(root, items):
+def createButtons():
+    frame_btns = Frame(root)
+    frame_btns.grid(row=3, column=2)
+
+    search_btn = Button(frame_btns, text='Search',
+                        width=12, command=None)
+    search_btn.grid(row=0, column=0)
+
+    data_selection = IntVar()
+
+    def changeData():
+        selection = data_selection.get()
+        createTreeView(selection)
+
+    radio_button_1 = Radiobutton(frame_btns, text='Show All Games', variable=data_selection, value=1,
+                                 command=changeData)
+    radio_button_2 = Radiobutton(frame_btns, text='Show Matchups', variable=data_selection, value=2,
+                                 command=changeData)
+
+    radio_button_1.grid(row=0, column=1)
+    radio_button_2.grid(row=1, column=1)
+
+    # Initial population of TreeView items
+    radio_button_1.select()
+    changeData()
+
+
+def createTreeView(data_selection):
+    data = getTreeViewDetails(data_selection)
+    columns = data[0]
+    items = data[1]
+
     frame_data = Frame(root)
-    frame_data.grid(row=4, column=0, columnspan=100, rowspan=600, pady=20, padx=20)
+    frame_data.grid(row=4, column=0, columnspan=len(columns), rowspan=600, pady=20, padx=20)
 
-    columns = ['id', 'P1', 'P2', 'Games', 'Win % (P1)', 'Win % (P2)', 'Depth (P1)', 'Depth (P2)', 'Heuristic (P1)',
-               'Heuristic (P2)', 'MC Test Games (P1)', 'MC Test Games (P2)']
-    matchup_tree_view = Treeview(frame_data, columns=columns, show="headings")
-    matchup_tree_view.column("id", width=30)
+    data_tree_view = Treeview(frame_data, columns=columns, show="headings")
+    data_tree_view.column("id", width=30)
+
+
     for col in columns[1:]:
-        matchup_tree_view.column(col, width=90)
-        matchup_tree_view.heading(col, text=col)
-    matchup_tree_view.bind('<<TreeviewSelect>>', None)
-    matchup_tree_view.pack(side="left", fill="y")
+        data_tree_view.column(col, width=40)
+        data_tree_view.heading(col, text=col)
+    data_tree_view.update()
+    for col in columns[1:]:
+        data_tree_view.column(col, width=100)
+
+    data_tree_view.bind('<<TreeviewSelect>>', None)
+    data_tree_view.pack(side="left", fill="y")
     v_scroll = Scrollbar(frame_data, orient='vertical')
-    v_scroll.configure(command=matchup_tree_view.yview)
+    v_scroll.configure(command=data_tree_view.yview)
     v_scroll.pack(side="right", fill="y")
-    matchup_tree_view.config(yscrollcommand=v_scroll.set)
+    h_scroll = Scrollbar(root, orient='horizontal')
+    h_scroll.configure(command=data_tree_view.xview)
+    h_scroll.grid(row=5, column=0)
+    data_tree_view.config(yscrollcommand=h_scroll.set)
+    data_tree_view.config(yscrollcommand=v_scroll.set)
 
-    matchups = []
     for item in items:
-        i = items.index(item)
-        id = item[0]
-        p1 = item[1]
-        p2 = item[2]
-        matchup = p1 + ' vs. ' + p2
-        if matchup not in matchups:
-            matchups.append(p1 + ' vs. ' + p2)
         print(item)
+        values_list = []
+        id = item[0]
+        for value in item:
+            print(value)
+            values_list.append(value)
+        values = tuple(values_list)
+        data_tree_view.insert(parent='', iid=id, index='end', values=values)
 
 
-        matchup_tree_view.insert(parent='', index=i, iid=id, text='', values=(id, 'Manual'))
-    print(matchups)
+def getTreeViewDetails(data_selection):
+    print("DATA SELE" + str(data_selection))
+
+    # 1 = Show All Games
+    if data_selection == 1:
+        columns = ['id', 'Player 1', 'Player 2', 'Winner', 'Time Elapsed (P1)', 'Moves Considered (P1)',
+                   'Moves Made (P1)', 'Time Elapsed (P2)', 'Moves Considered (P2)', 'Moves Made (P2)', 'Depth (P1)',
+                   'Depth (P2)', 'Heuristic (P1)', 'Heuristic (P2)', 'MC Test Games (P1)', 'MC Test Games (P2)']
+        items = database.selectAll('games')
+        return columns, items
+    # 2 = Show All Matchups
+    elif data_selection == 2:
+        columns = ['id', 'Matchup', 'Games', 'Wins (P1)', 'Wins (P2)', 'Avg. Time Elapsed (P1)',
+                   'Avg. Moves Considered (P1)', 'Avg. Moves Made (P1)', 'Avg. Time Elapsed (P2)',
+                   'Avg. Moves Considered (P2)', 'Avg. Moves Made (P2)', 'Depth (P1)', 'Depth (P2)', 'Heuristic (P1)',
+                   'Heuristic (P2)', 'MC Test Games (P1)', 'MC Test Games (P2)']
+        items = database.selectAll('matchups')
+        return columns, items
 
 
 def drawBoard():
@@ -316,6 +369,7 @@ def runGames():
             games.append(g)
         for g in games:
             database.insertGame(g)
+        database.insertMatchup(games)
 
 
 def getPlayer1():
@@ -392,5 +446,5 @@ def printResults(games, n):
 if __name__ == '__main__':
     database = Database()
     database.createGamesTable()
-    database.selectAllGames()
+    database.createMatchupsTable()
     showMainMenu()

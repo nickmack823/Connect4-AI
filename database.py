@@ -26,7 +26,6 @@ class Database:
 
     def createDatabaseTable(self, create_table_sql):
         """Creates a table from the createTableSQL statement
-        :param conn: Connection object
         :param create_table_sql: A CREATE TABLE SQL statement
         :return:
         """
@@ -58,6 +57,32 @@ class Database:
                                                 ); """
         if self.conn is not None:
             self.createDatabaseTable(sql_create_games_table)
+        else:
+            print("Error: Cannot connect to database.")
+
+    def createMatchupsTable(self):
+        """Creates a table 'matchups' in the database for storing data relating to past matchups"""
+        sql_create_matchups_table = """ CREATE TABLE IF NOT EXISTS matchups (
+                                                            id integer PRIMARY KEY,
+                                                            matchup text,
+                                                            games integer,
+                                                            p1_victories integer,
+                                                            p2_victories integer,
+                                                            p1_total_time_elapsed real,
+                                                            p1_total_moves_considered integer,
+                                                            p1_total_moves_made integer,
+                                                            p1_depth integer,
+                                                            p1_heuristic text,
+                                                            p1_monte_carlo_test_games integer,
+                                                            p2_total_time_elapsed real,
+                                                            p2_total_moves_considered integer,
+                                                            p2_total_moves_made integer,
+                                                            p2_depth integer,
+                                                            p2_heuristic text,
+                                                            p2_monte_carlo_test_games integer
+                                                        ); """
+        if self.conn is not None:
+            self.createDatabaseTable(sql_create_matchups_table)
         else:
             print("Error: Cannot connect to database.")
 
@@ -97,11 +122,127 @@ class Database:
         cursor.execute(sql_insertion_games, gameValues)
         # Commit required to actually save the changes
         self.conn.commit()
-        self.selectAllGames()
 
-    def selectAllGames(self):
-        print("SELECTING ALL")
+    def insertMatchup(self, games):
+        # Sample game to get persistent values from (names, depths, heuristics, Monte Carlo test games)
+        game = games[0]
+        p1 = game.player1.label
+        p2 = game.player2.label
+        matchup = p1 + " vs. " + p2
+        print("INSERT MATCHUP: " + matchup)
+
+        n = len(games)
+        wins = {'P1: ' + p1: 0, 'P2: ' + p2: 0, 'Draw': 0}
+        p1_total_time, p2_total_time, p1_total_moves_considered, p2_total_moves_considered = 0, 0, 0, 0
+        p1_total_moves, p2_total_moves = 0, 0
+
+        for g in games:
+            print(g.results.keys())
+            print(wins.keys())
+            for k in g.results.keys():
+                if k in wins.keys():
+                    wins[k] += g.results[k]
+                    print(k)
+                    print(wins[k])
+
+            p1_total_time += g.time_elapsed_p1
+            p2_total_time += g.time_elapsed_p2
+            p1_total_moves_considered += g.moves_considered_p1
+            p2_total_moves_considered += g.moves_considered_p2
+            p1_total_moves += g.moves_made_p1
+            p2_total_moves += g.moves_made_p2
+
+        m = self.selectMatchup(matchup)
+        # If matchup already in matchups table, update it
+        if len(m) != 0:
+            values = (n, wins['P1: ' + p1], wins['P2: ' + p2], p1_total_time, p1_total_moves_considered,
+                      p1_total_moves, p2_total_time, p2_total_moves_considered,
+                      p2_total_moves, matchup)
+            self.updateMatchup(values)
+            m = self.selectMatchup(matchup)
+        else:
+            cursor = self.conn.cursor()
+            sql_insertion_matchup = """ INSERT INTO matchups ( matchup,
+                                                                    games,
+                                                                    p1_victories,
+                                                                    p2_victories,
+                                                                    p1_total_time_elapsed,
+                                                                    p1_total_moves_considered,
+                                                                    p1_total_moves_made,
+                                                                    p1_depth,
+                                                                    p1_heuristic,
+                                                                    p1_monte_carlo_test_games,
+                                                                    p2_total_time_elapsed,
+                                                                    p2_total_moves_considered,
+                                                                    p2_total_moves_made,
+                                                                    p2_depth,
+                                                                    p2_heuristic,
+                                                                    p2_monte_carlo_test_games)
+                                                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+            p1depth = game.player1.getDepth()
+            p2depth = game.player2.getDepth()
+            p1H = game.player1.getHeuristicName()
+            p2H = game.player2.getHeuristicName()
+            p1MC = game.player1.getMCTestTotal()
+            p2MC = game.player2.getMCTestTotal()
+
+            # Values for insertion
+            matchup_values = (
+                matchup, n, wins['P1: ' + p1], wins['P2: ' + p2], p1_total_time, p1_total_moves_considered,
+                p1_total_moves, p1depth, p1H, p1MC, p2_total_time, p2_total_moves_considered,
+                p2_total_moves, p2depth, p2H, p2MC)
+            cursor.execute(sql_insertion_matchup, matchup_values)
+            self.conn.commit()
+
+    def selectAll(self, table):
+        print("SELECTING ALL FROM " + table)
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM games")
-        games = cursor.fetchall()
-        return games
+        cursor.execute("SELECT * FROM " + table)
+        results = cursor.fetchall()
+        return results
+
+    def selectMatchup(self, matchup):
+        print("SELECTING ALL FROM matchups WHERE matchup=" + matchup)
+        cursor = self.conn.cursor()
+        sql_selection = 'SELECT * FROM matchups WHERE matchup=?'
+        cursor.execute(sql_selection, (matchup,))
+        row = cursor.fetchall()
+        return row
+
+    def updateMatchup(self, values):
+        print("UPDATING matchups with " + values)
+        cursor = self.conn.cursor()
+        sql_update = """UPDATE matchups 
+                        SET games = ? ,
+                            p1_victories = ? ,
+                            p2_victories = ? ,
+                            p1_total_time_elapsed = ? ,
+                            p1_total_moves_considered = ? ,
+                            p1_total_moves_made = ? ,
+                            p2_total_time_elapsed = ? ,
+                            p2_total_moves_considered = ? ,
+                            p2_total_moves_made = ? 
+                        WHERE matchup = ?
+                        """
+
+        matchup = values[-1]
+
+        # Existing matchup row
+        prev = self.selectMatchup(matchup)
+
+        # Calculating new values
+        new_total = prev[0][2] + values[0]
+        new_wins_p1 = values[1] + prev[0][3]
+        new_wins_p2 = values[2] + prev[0][4]
+        new_time_p1 = values[3] + prev[0][5]
+        new_moves_considered_p1 = values[4] + prev[0][6]
+        new_moves_made_p1 = values[5] + prev[0][7]
+        new_time_p2 = values[6] + prev[0][11]
+        new_moves_considered_p2 = values[7] + prev[0][12]
+        new_moves_made_p2 = values[8] + prev[0][13]
+
+        new_values = (new_total, new_wins_p1, new_wins_p2, round(new_time_p1, 2), new_moves_considered_p1,
+                      new_moves_made_p1, round(new_time_p2, 2), new_moves_considered_p2, new_moves_made_p2, matchup)
+
+        cursor.execute(sql_update, new_values)
+        self.conn.commit()
