@@ -9,6 +9,8 @@ from tkinter.ttk import Treeview
 
 pygame.init()
 
+# Static variables for pygame
+
 BLUE = (0, 0, 255)
 LIGHTBLUE = (0, 75, 255)
 BLACK = (0, 0, 0)
@@ -33,29 +35,43 @@ TITLE_FONT = pygame.font.SysFont('calibri', 50)
 BUTTON_FONT = pygame.font.SysFont('arial', 30)
 MAIN_MENU_FONT_SIZE = 60
 
+# Game configuration variables
+
 p1Selection = 1
 p2Selection = 2
 gameCount = 0
-
 p1Depth, p2Depth, p1TestGamesMC, p2TestGamesMC = 0, 0, 0, 0
 p1Heuristic, p2Heuristic = 1, 1
 
 # Root Tkinter view
 root = None
+
+# Pygame menu
 menu = None
+
+# Reference to Database class instance
 database = None
 
 # Search parameters
+
 p1Search, p2Search, p1DepthSearch, p2DepthSearch = None, None, None, None
 p1HeuristicSearch, p2HeuristicSearch, p1TestGamesMCSearch, p2TestGamesMCSearch = None, None, None, None
 p1DepthEquality, p2DepthEquality, p1MCEquality, p2MCEquality = None, None, None, None
 
 # Data selection value
-dataSelection = 1
+dataSelection = None
+
 # TreeViews
 game_view, matchup_view = None, None
+
+# Items to show in TreeView
+items = []
+
 # Scrolling
 scrolling = False
+
+# Searching
+searching = False
 
 
 def showMainMenu():
@@ -165,6 +181,8 @@ def showDataWindow():
     createSearchWidgets()
     createButtons()
 
+    getAllItems()
+    createTreeView()
 
     root.title('Connect4 AI (Database)')
     root.geometry('1300x550')
@@ -178,10 +196,23 @@ def createSearchWidgets():
               'Monte Carlo Test Games (P1)', 'Monte Carlo Test Games (P2)']
     equalities = ['=', '>', '>=', '<', '<=']
     row, column = 0, 0
+
+    # Initializing global search variables
+    global p1Search, p2Search, p1DepthSearch, p2DepthSearch, p1DepthEquality, p2DepthEquality, p1MCEquality, \
+        p2MCEquality, p1HeuristicSearch, p2HeuristicSearch, p1TestGamesMCSearch, p2TestGamesMCSearch
+    p1Search, p2Search, p1HeuristicSearch, p2HeuristicSearch = StringVar(), StringVar(), StringVar(), StringVar()
+    p1DepthSearch, p2DepthSearch, p1TestGamesMCSearch, p2TestGamesMCSearch = StringVar(), StringVar(), StringVar(), StringVar()
+    p1DepthEquality, p2DepthEquality, p1MCEquality, p2MCEquality = StringVar(), StringVar(), StringVar(), StringVar()
+
+    p1HeuristicSearch.set('N/A')
+    p2HeuristicSearch.set('N/A')
+    p1DepthEquality.set('=')
+    p2DepthEquality.set('=')
+    p1MCEquality.set('=')
+    p2MCEquality.set('=')
+
     for label in labels:
-        print(label)
         i = labels.index(label)
-        print(i % 2)
         if (i + 1) % 2 != 0:
             column = 0
         else:
@@ -192,92 +223,85 @@ def createSearchWidgets():
         l = Label(f, text=label, font=('bold', 10), pady=20, padx=10)
         l.grid(row=row, column=column, sticky=W)
 
-        global p1Search, p2Search, p1DepthSearch, p2DepthSearch, p1DepthEquality, p2DepthEquality
-        global p1HeuristicSearch, p2HeuristicSearch, p1TestGamesMCSearch, p2TestGamesMCSearch
         if 'Player' in label:
             choices = ['Manual', 'Random', 'Minimax', 'Alpha-Beta', 'Monte Carlo']
             if '1' in label:
-                p1Search = StringVar()
                 menu = OptionMenu(f, p1Search, *choices)
             else:
-                p2Search = StringVar()
                 menu = OptionMenu(f, p2Search, *choices)
             menu.grid(row=row, column=column, padx=(75, 0))
         elif 'Depth' in label:
             if 'P1' in label:
-                p1DepthSearch = IntVar()
-                p1DepthEquality = StringVar()
-                p1DepthEquality.set('=')
                 search_entry = Entry(f, textvariable=p1DepthSearch)
                 menu = OptionMenu(f, p1DepthEquality, *equalities)
             else:
-                p2DepthSearch = IntVar()
-                p2DepthEquality = StringVar()
-                p2DepthEquality.set('=')
                 search_entry = Entry(f, textvariable=p2DepthSearch)
                 menu = OptionMenu(f, p2DepthEquality, *equalities)
             menu.grid(row=row, column=column, padx=(90, 10))
             search_entry.grid(row=row, column=column + 1)
         elif 'Heuristic' in label:
-            choices = ['None', 'Adjacent Pieces', 'Piece Locations', 'Connected Pieces']
+            choices = ['N/A', 'Adjacent Pieces', 'Piece Locations', 'Connected Pieces']
             if 'P1' in label:
-                p1HeuristicSearch = StringVar()
-                p1HeuristicSearch.set('None')
                 menu = OptionMenu(f, p1HeuristicSearch, *choices)
             else:
-                p2HeuristicSearch = StringVar()
-                p2HeuristicSearch.set('None')
                 menu = OptionMenu(f, p2HeuristicSearch, *choices)
             menu.grid(row=row, column=column, padx=(100, 0))
         elif 'Monte Carlo' in label:
             if 'P1' in label:
-                p1TestGamesMCSearch = IntVar()
-                p1MCEquality = StringVar()
                 menu = OptionMenu(f, p1MCEquality, *equalities)
                 search_entry = Entry(f, textvariable=p1TestGamesMCSearch)
             else:
-                p2TestGamesMCSearch = IntVar()
-                p2MCEquality = StringVar()
                 menu = OptionMenu(f, p2MCEquality, *equalities)
                 search_entry = Entry(f, textvariable=p2TestGamesMCSearch)
             menu.grid(row=row, column=column, padx=(190, 10))
             search_entry.grid(row=row, column=column + 1)
-        # print(row)
-        # print(column)
         if column == 1:
             row += 1
+
 
 def createButtons():
     frame_buttons = Frame(root)
     frame_buttons.grid(row=3, column=2)
 
+    def search():
+        global searching
+        searching = True
+        displayItems()
+
     search_button = Button(frame_buttons, text='Search',
-                        width=12, command=None)
+                           width=12, command=search)
     search_button.grid(row=0, column=0)
 
-    data_selection = IntVar()
+    def clearSearch():
+        global searching
+        searching = False
+        displayItems()
+
+
+    clear_search_button = Button(frame_buttons, text='Clear Search', width=12, command=clearSearch)
+    clear_search_button.grid(row=1, column=0)
+
+    global dataSelection
+    dataSelection = IntVar()
 
     def changeData():
-        selection = data_selection.get()
-        createTreeView(selection)
+        if not searching:
+            getAllItems()
+            createTreeView()
 
-    radio_button_1 = Radiobutton(frame_buttons, text='Show All Games', variable=data_selection, value=1,
+    radio_button_1 = Radiobutton(frame_buttons, text='Show All Games', variable=dataSelection, value=1,
                                  command=changeData)
-    radio_button_2 = Radiobutton(frame_buttons, text='Show Matchups', variable=data_selection, value=2,
+    radio_button_2 = Radiobutton(frame_buttons, text='Show Matchups', variable=dataSelection, value=2,
                                  command=changeData)
 
     radio_button_1.grid(row=0, column=1)
     radio_button_2.grid(row=1, column=1)
-
-    # Initial population of TreeView items
     radio_button_1.select()
-    changeData()
 
 
-def createTreeView(data_selection):
-    data = getTreeViewDetails(data_selection)
-    columns = data[0]
-    items = data[1]
+def createTreeView():
+    # Gets column headers
+    columns = getTreeViewColumns()
 
     frame_data = Frame(root)
     frame_data.grid(row=4, column=0, columnspan=len(columns), rowspan=1, pady=20, padx=20)
@@ -289,23 +313,22 @@ def createTreeView(data_selection):
         tree_view.column(col, width=80, minwidth=125, stretch=True)
         tree_view.heading(col, text=col)
 
-
-
     tree_view.bind('<<TreeviewSelect>>', None)
     tree_view.pack(side="left", fill="y")
     createScrollbars(tree_view, frame_data)
 
     index = 0
     for item in items:
-        print(item)
         values_list = []
         id = item[0]
+        # If item already displayed, skip insertion
         if tree_view.exists(id):
             continue
         game_count = item[2]
         for value in item:
+            # If this value is a total, calculate average
             if 'Avg.' in columns[index]:
-                avg_value = round(value/game_count, 2)
+                avg_value = round(value / game_count, 2)
                 values_list.append(avg_value)
             else:
                 values_list.append(value)
@@ -314,33 +337,94 @@ def createTreeView(data_selection):
         values = tuple(values_list)
         tree_view.insert(parent='', iid=id, index='end', values=values)
         index = 0
-    if data_selection == 1:
-        global game_view
-        global matchup_view
+
+    selection = dataSelection.get() if dataSelection is not None else 1
+    global game_view, matchup_view
+    if selection == 1:
         game_view = tree_view
         if matchup_view is not None:
-            matchup_view.destroy()
+            print("DESTROY MATCHUP")
+            try:
+                matchup_view.destroy()
+            except:
+                print("Matchup View already destroyed")
     else:
+        print("DESTORY GAMES")
         matchup_view = tree_view
-        game_view.destroy()
+        try:
+            game_view.destroy()
+        except:
+            print("Game View already destroyed")
 
-
-def getTreeViewDetails(data_selection):
+def getTreeViewColumns():
+    global items, dataSelection
+    selection = dataSelection.get() if dataSelection is not None else 1
     # 1 = Show All Games
-    if data_selection == 1:
+    if selection == 1:
         columns = ['id', 'Player 1', 'Player 2', 'Winner', 'Time Elapsed (P1)', 'Moves Considered (P1)',
                    'Moves Made (P1)', 'Depth (P1)', 'Heuristic (P1)', 'MC Test Games (P1)', 'Time Elapsed (P2)',
                    'Moves Considered (P2)', 'Moves Made (P2)', 'Depth (P2)', 'Heuristic (P2)', 'MC Test Games (P2)']
-        items = database.selectAll('games')
-        return columns, items
+        return columns
     # 2 = Show All Matchups
-    elif data_selection == 2:
+    elif selection == 2:
         columns = ['id', 'Matchup', 'Games', 'Wins (P1)', 'Wins (P2)', 'Avg. Time Elapsed (P1)',
                    'Avg. Moves Considered (P1)', 'Avg. Moves Made (P1)', 'Depth (P1)', 'Heuristic (P1)',
                    'MC Test Games (P1)', 'Avg. Time Elapsed (P2)', 'Avg. Moves Considered (P2)', 'Avg. Moves Made (P2)',
                    'Depth (P2)', 'Heuristic (P2)', 'MC Test Games (P2)']
-        items = database.selectAll('matchups')
-        return columns, items
+        return columns
+
+
+def displayItems():
+    getAllItems()
+    createTreeView()
+
+
+def getAllItems():
+    global items
+    selection = dataSelection.get() if dataSelection is not None else 1
+    print("GETTING ALL ITEMS")
+    print("SELECTION : " + str(selection))
+    if searching:
+        items = getItemsBySearch()
+    else:
+        items = database.selectAll('games') if selection == 1 else database.selectAll('matchups')
+
+
+def getItemsBySearch():
+    global items
+    selection = dataSelection.get()
+    equalities = (p1DepthEquality.get(), p1MCEquality.get(), p2DepthEquality.get(), p2MCEquality.get())
+    items = []
+    print("SEARCHING WITH: " + str(equalities))
+
+    if p1Search.get() != 'Monte Carlo':
+        p1TestGamesMCSearch.set('N/A')
+    if p2Search.get() != 'Monte Carlo':
+        p2TestGamesMCSearch.set('N/A')
+    if p1Search.get() != 'Minimax' and p1Search.get() != 'Alpha-Beta':
+        p1DepthSearch.set('N/A')
+        p1HeuristicSearch.set('N/A')
+    if p2Search.get() != 'Minimax' and p2Search.get() != 'Alpha-Beta':
+        p2DepthSearch.set('N/A')
+        p2HeuristicSearch.set('N/A')
+
+    # Searching all games
+    if selection == 1:
+        values = (p1Search.get(), p2Search.get(), p1DepthSearch.get(), p1HeuristicSearch.get(), p1TestGamesMCSearch.get(),
+                  p2DepthSearch.get(), p2HeuristicSearch.get(), p2TestGamesMCSearch.get())
+        print("AND " + str(values))
+        items = database.selectGames(values, equalities)
+    # Searching matchups
+    elif selection == 2:
+        matchup = p1Search.get() + ' vs. ' + p2Search.get()
+        values = (matchup, p1DepthSearch.get(), p1HeuristicSearch.get(), p1TestGamesMCSearch.get(),
+                  p2DepthSearch.get(), p2HeuristicSearch.get(), p2TestGamesMCSearch.get())
+        print("AND " + str(values))
+        items = database.selectMatchup(values, equalities)
+    return items
+
+
+
 
 def createScrollbars(connected_widget, frame):
     v_scroll = Scrollbar(frame, orient='vertical')
@@ -363,6 +447,7 @@ def createScrollbars(connected_widget, frame):
 
     h_scroll.bind("<Button-1>", start_scrolling)
     h_scroll.bind('<ButtonRelease-1>', start_scrolling)
+
 
 def drawBoard():
     screen.fill(BLACK)
@@ -428,52 +513,6 @@ def getPlayer2():
         if p2TestGamesMC >= 1:
             p2 = game.Game.getPlayer(p2Selection, p2TestGamesMC)
     return p2
-
-
-def printResults(games, n):
-    totalTimeP1, totalTimeP2, totalMovesConsideredP1, totalMovesConsideredP2 = 0, 0, 0, 0
-    p1 = games[0].player1.label
-    p2 = games[0].player2.label
-    finalResults = {'P1: ' + p1: 0, 'P2: ' + p2: 0, 'Draw': 0}
-    for game in games:
-        if len(games) == 1:
-            game_number = " "
-        else:
-            game_number = " " + str(games.index(game) + 1) + " "
-        print("\nGAME" + game_number + "RESULTS (" + p1 + " vs. " + p2 + ")\n")
-        if p1 == "Minimax" or p1 == "Alpha-Beta":
-            print(p1 + " depth (P1): " + str(game.player1.max_depth))
-        if p2 == "Minimax" or p2 == "Alpha-Beta":
-            print(p2 + " depth (P2): " + str(game.player2.max_depth))
-        if p1 == "Monte Carlo":
-            print("Random games played per possible move (Monte Carlo, P1): " + str(game.player1.test_total))
-        if p2 == "Monte Carlo":
-            print("Random games played per possible move (Monte Carlo, P2): " + str(game.player2.test_total))
-        print("Results: " + str(game.results))
-        print("\nPlayer 1 (" + p1 + ")")
-        print("Total moves considered: " + "{:,}".format(game.moves_considered_p1))
-        print("Average moves considered per game: " + "{:,}".format(game.moves_considered_p1 / n))
-        print("Time spent considering moves: " + str(round(game.time_elapsed_p1, 2)) + " seconds")
-        print("Average time spent per game: " + str(round(game.time_elapsed_p1 / n, 2)) + " seconds")
-        print("\nPlayer 2 (" + p2 + ")")
-        print("Total moves considered: " + "{:,}".format(game.moves_considered_p2))
-        print("Average moves considered per game: " + "{:,}".format(game.moves_considered_p2 / n))
-        print("Time spent considering moves: " + str(round(game.time_elapsed_p2, 2)) + " seconds")
-        print("Average time spent per game: " + str(round(game.time_elapsed_p2 / n, 2)) + " seconds")
-
-        totalTimeP1 += game.time_elapsed_p1
-        totalTimeP2 += game.time_elapsed_p2
-        totalMovesConsideredP1 += game.moves_considered_p1
-        totalMovesConsideredP2 += game.moves_considered_p2
-        finalResults = {'P1: ' + p1: finalResults.get('P1: ' + p1) + game.results.get('P1: ' + p1),
-                        'P2: ' + p2: finalResults.get('P2: ' + p2) + game.results.get('P2: ' + p2),
-                        'Draw': finalResults.get('Draw') + game.results.get('Draw')}
-
-    print(p1 + " vs. " + p2 + " (" + str(n) + " games)")
-    print("OVERALL RESULTS: " + str(finalResults))
-    print("Moves made P1: " + str(game.moves_made_p1))
-    print("Moves made P2: " + str(game.moves_made_p2))
-
 
 if __name__ == '__main__':
     database = Database()
