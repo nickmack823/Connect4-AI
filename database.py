@@ -14,7 +14,10 @@ class Database:
         self.conn = self.createDatabaseConnection()
 
     def createDatabaseConnection(self):
-        """Creates a connection to an SQLite database"""
+        """
+        Creates a connection to an SQLite database
+        :return: the connection to the database if the connection was successful, else None
+        """
         conn = None
         try:
             print(DATABASE_PATH)
@@ -25,8 +28,8 @@ class Database:
         return conn
 
     def createDatabaseTable(self, create_table_sql):
-        """Creates a table from the createTableSQL statement
-        :param create_table_sql: A CREATE TABLE SQL statement
+        """Creates a table from the given SQL statement.
+        :param create_table_sql: a CREATE TABLE SQL statement
         :return:
         """
         try:
@@ -36,7 +39,7 @@ class Database:
             print("Error (createDatabaseTable): " + str(e))
 
     def createGamesTable(self):
-        """Creates a table 'games' in the database for storing data relating to past completed games"""
+        """Creates a table 'games' in the database for storing data relating to completed games."""
         sql_create_games_table = """ CREATE TABLE IF NOT EXISTS games (
                                                     id integer PRIMARY KEY,
                                                     player1 text,
@@ -61,7 +64,7 @@ class Database:
             print("Error: Cannot connect to database.")
 
     def createMatchupsTable(self):
-        """Creates a table 'matchups' in the database for storing data relating to past matchups"""
+        """Creates a table 'matchups' in the database for storing data relating to game matchups."""
         sql_create_matchups_table = """ CREATE TABLE IF NOT EXISTS matchups (
                                                             id integer PRIMARY KEY,
                                                             matchup text,
@@ -87,8 +90,11 @@ class Database:
             print("Error: Cannot connect to database.")
 
     def insertGame(self, game):
-        """Inserts a 'game' item into the 'games' table of the database"""
-        print("INSERT GAME")
+        """
+        Records a game's results into the database.
+        :param game: the game to record
+        :return:
+        """
         sql_insertion_games = """ INSERT INTO games ( player1,
                                                 player2,
                                                 winner,
@@ -124,6 +130,12 @@ class Database:
         self.conn.commit()
 
     def selectGames(self, values, equalities):
+        """
+        Returns the games that have the given values that satisfy the given equalities.
+        :param values: a tuple of values to match
+        :param equalities: a tuple of equalities to compare values with
+        :return: the games that mee the criteria, or an empty list of no such games are found
+        """
         print("SELECTING ALL FROM games WHERE game has values: " + str(values))
         cursor = self.conn.cursor()
         e = equalities
@@ -133,16 +145,19 @@ class Database:
                         'p2_monte_carlo_test_games' + e[3] + '?'
         cursor.execute(sql_selection, values)
         games = cursor.fetchall()
-        print(games)
         return games
 
     def insertMatchup(self, games):
+        """
+        Inserts the matchup data from the given list of games in the database.
+        :param games: The games to record data from
+        :return:
+        """
         # Sample game to get persistent values from (names, depths, heuristics, Monte Carlo test games)
         game = games[0]
         p1 = game.player1.label
         p2 = game.player2.label
         matchup = p1 + " vs. " + p2
-        print("INSERT MATCHUP: " + matchup)
 
         n = len(games)
         wins = {'P1: ' + p1: 0, 'P2: ' + p2: 0, 'Draw': 0}
@@ -202,6 +217,11 @@ class Database:
             self.conn.commit()
 
     def selectAll(self, table):
+        """
+        Selects every item from the given table.
+        :param table: the table to select from
+        :return: the results of the selection
+        """
         print("SELECTING ALL FROM " + table)
         cursor = self.conn.cursor()
         cursor.execute("SELECT * FROM " + table)
@@ -209,6 +229,12 @@ class Database:
         return results
 
     def selectMatchup(self, values, equalities):
+        """
+        Returns the matchup that has the given values that satisfy the given equalities.
+        :param values: a tuple of values to match
+        :param equalities: a tuple of equalities to compare values with
+        :return: the matchup that meets the criteria, or an empty list if no such matchup is found
+        """
         print("SELECTING ALL FROM matchups WHERE matchup has values: " + str(values))
         cursor = self.conn.cursor()
         e = equalities
@@ -220,6 +246,12 @@ class Database:
         return row
 
     def updateMatchup(self, values, existing_matchup):
+        """
+        Updates the given matchup with the given values.
+        :param values: a tuple of values with which to update the matchup
+        :param existing_matchup: the matchup to update
+        :return:
+        """
         print("UPDATING matchups with " + str(values))
         cursor = self.conn.cursor()
         sql_update = """UPDATE matchups 

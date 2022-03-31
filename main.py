@@ -1,12 +1,12 @@
 import pygame
 import pygame_menu
-import tkinter
 import game
 
 from database import Database
 from tkinter import *
 from tkinter.ttk import Treeview
 
+# Initialize pygame
 pygame.init()
 
 # Static variables for pygame
@@ -75,6 +75,7 @@ searching = False
 
 
 def showMainMenu():
+    """Displays the main menu for the application."""
     menu = pygame_menu.Menu('Connect4 AI', screen.get_width(), screen.get_height(),
                             theme=pygame_menu.themes.THEME_BLUE)
     menu.add.button('Run Game(s)', showConfigureGameMenu, font_size=MAIN_MENU_FONT_SIZE)
@@ -84,8 +85,7 @@ def showMainMenu():
 
 
 def showConfigureGameMenu():
-    print("Showing Game Configuration Menu")
-
+    """Displays the menu for the user to configure the game(s) they want to run."""
     menu = pygame_menu.Menu('Connect4 AI', width, height,
                             theme=pygame_menu.themes.THEME_BLUE)
     menu.add.button('Back', showMainMenu, font_size=30, padding=20)
@@ -93,7 +93,6 @@ def showConfigureGameMenu():
     def updateGameCount(input):
         global gameCount
         gameCount = int(input) if input.isnumeric() else 0
-        print(gameCount)
 
     menu.add.text_input('Number of Games: ', textinput_id='gameCount', onchange=updateGameCount)
 
@@ -176,6 +175,7 @@ def showConfigureGameMenu():
 
 
 def showDataWindow():
+    """Displays Tkinter window with a UI for viewing and searching the game_data database."""
     global root
     root = Tk()
     createSearchWidgets()
@@ -192,6 +192,7 @@ def showDataWindow():
 
 
 def createSearchWidgets():
+    """Creates UI widgets (entry boxes, option menus) related to searching."""
     labels = ['Player 1', 'Player 2', 'Depth (P1)', 'Depth (P2)', 'Heuristic (P1)', 'Heuristic (P2)',
               'Monte Carlo Test Games (P1)', 'Monte Carlo Test Games (P2)']
     equalities = ['=', '>', '>=', '<', '<=']
@@ -260,6 +261,7 @@ def createSearchWidgets():
 
 
 def createButtons():
+    """Creates UI buttons for searching, clearing searches, and selecting the table of the database to view."""
     frame_buttons = Frame(root)
     frame_buttons.grid(row=3, column=2)
 
@@ -276,7 +278,6 @@ def createButtons():
         global searching
         searching = False
         displayItems()
-
 
     clear_search_button = Button(frame_buttons, text='Clear Search', width=12, command=clearSearch)
     clear_search_button.grid(row=1, column=0)
@@ -300,6 +301,7 @@ def createButtons():
 
 
 def createTreeView():
+    """Establishes a TreeView for the display of database items."""
     # Gets column headers
     columns = getTreeViewColumns()
 
@@ -340,23 +342,28 @@ def createTreeView():
 
     selection = dataSelection.get() if dataSelection is not None else 1
     global game_view, matchup_view
+    # Destroy matchup view when switching to games
     if selection == 1:
         game_view = tree_view
         if matchup_view is not None:
-            print("DESTROY MATCHUP")
             try:
                 matchup_view.destroy()
             except:
                 print("Matchup View already destroyed")
+    # Destroy games view when switching to matchups
     else:
-        print("DESTORY GAMES")
         matchup_view = tree_view
         try:
             game_view.destroy()
         except:
             print("Game View already destroyed")
 
+
 def getTreeViewColumns():
+    """
+    Returns a list of column headers to use in the TreeView.
+    :return: a list of column headers
+    """
     global items, dataSelection
     selection = dataSelection.get() if dataSelection is not None else 1
     # 1 = Show All Games
@@ -375,15 +382,16 @@ def getTreeViewColumns():
 
 
 def displayItems():
+    """Retrieves items to display and creates a TreeView filled with said items."""
     getAllItems()
     createTreeView()
 
 
 def getAllItems():
+    """Sets the items to display in the TreeView based on the user's selected table and whether or not the user is
+    currently using the 'search' functionality."""
     global items
     selection = dataSelection.get() if dataSelection is not None else 1
-    print("GETTING ALL ITEMS")
-    print("SELECTION : " + str(selection))
     if searching:
         items = getItemsBySearch()
     else:
@@ -391,11 +399,13 @@ def getAllItems():
 
 
 def getItemsBySearch():
-    global items
+    """
+    Retrieves a collection of items based on the user's search parameters.
+    :return: a list of items that satisfy the user's search parameters
+    """
     selection = dataSelection.get()
     equalities = (p1DepthEquality.get(), p1MCEquality.get(), p2DepthEquality.get(), p2MCEquality.get())
     items = []
-    print("SEARCHING WITH: " + str(equalities))
 
     if p1Search.get() != 'Monte Carlo':
         p1TestGamesMCSearch.set('N/A')
@@ -410,23 +420,26 @@ def getItemsBySearch():
 
     # Searching all games
     if selection == 1:
-        values = (p1Search.get(), p2Search.get(), p1DepthSearch.get(), p1HeuristicSearch.get(), p1TestGamesMCSearch.get(),
-                  p2DepthSearch.get(), p2HeuristicSearch.get(), p2TestGamesMCSearch.get())
-        print("AND " + str(values))
+        values = (
+        p1Search.get(), p2Search.get(), p1DepthSearch.get(), p1HeuristicSearch.get(), p1TestGamesMCSearch.get(),
+        p2DepthSearch.get(), p2HeuristicSearch.get(), p2TestGamesMCSearch.get())
         items = database.selectGames(values, equalities)
     # Searching matchups
     elif selection == 2:
         matchup = p1Search.get() + ' vs. ' + p2Search.get()
         values = (matchup, p1DepthSearch.get(), p1HeuristicSearch.get(), p1TestGamesMCSearch.get(),
                   p2DepthSearch.get(), p2HeuristicSearch.get(), p2TestGamesMCSearch.get())
-        print("AND " + str(values))
         items = database.selectMatchup(values, equalities)
     return items
 
 
-
-
 def createScrollbars(connected_widget, frame):
+    """
+    Creates vertical and horizontal scrollbars that are located in the given frame and attached to the given widget.
+    :param connected_widget: The widget to pair with the scrollbars
+    :param frame: The frame to house the scrollbars
+    :return:
+    """
     v_scroll = Scrollbar(frame, orient='vertical')
     v_scroll.configure(command=connected_widget.yview)
     v_scroll.pack(side="right", fill="y")
@@ -450,6 +463,7 @@ def createScrollbars(connected_widget, frame):
 
 
 def drawBoard():
+    """Draws an empty Connect4 board on the screen."""
     screen.fill(BLACK)
     for c in range(COLUMN_COUNT):
         for r in range(ROW_COUNT):
@@ -461,19 +475,33 @@ def drawBoard():
 
 
 def drawPiece(column, row, color):
+    """
+    Draws a piece of the given color into the given column-row location of the board.
+    :param column: The piece's column
+    :param row: The piece's row
+    :param color: The piece's color
+    :return:
+    """
     pygame.draw.circle(screen, color, (int(column * SQUARE_SIZE + SQUARE_SIZE / 2),
                                        int(row * SQUARE_SIZE + SQUARE_SIZE * 3 - SQUARE_SIZE / 2)), RADIUS)
     pygame.display.update()
 
 
 def drawHoveringPiece(x, color):
+    """
+    Draws a hovering Connect4 piece of the given color at the given 'x' of the x-axis.
+    :param x: The x-coordinate of the piece to draw
+    :param color: The color of the piece to draw
+    :return:
+    """
     pygame.draw.rect(screen, BLACK, (0, 0, width, SQUARE_SIZE + SQUARE_SIZE))
     pygame.draw.circle(screen, color, (x, int(SQUARE_SIZE / 2 + SQUARE_SIZE)), RADIUS)
     pygame.display.update()
 
 
 def runGames():
-    print("Starting Game(s)")
+    """Runs a number of games based on user's input using user's selected configuration."""
+    print("Running " + str(gameCount) + " games.")
     if gameCount >= 1:
         p1 = getPlayer1()
         p2 = getPlayer2()
@@ -490,6 +518,7 @@ def runGames():
 
 
 def getPlayer1():
+    """Retrieves Player 1 using user's selection."""
     p1 = None
     if p1Selection == 1 or p1Selection == 2:
         p1 = game.Game.getPlayer(p1Selection)
@@ -503,6 +532,7 @@ def getPlayer1():
 
 
 def getPlayer2():
+    """Retrieves Player 2 using user's selection."""
     p2 = None
     if p2Selection == 1 or p2Selection == 2:
         p2 = game.Game.getPlayer(p2Selection)
@@ -513,6 +543,7 @@ def getPlayer2():
         if p2TestGamesMC >= 1:
             p2 = game.Game.getPlayer(p2Selection, p2TestGamesMC)
     return p2
+
 
 if __name__ == '__main__':
     database = Database()
