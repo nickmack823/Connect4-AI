@@ -17,6 +17,9 @@ class Game:
         self.board = Board()
 
     def playGame(self):
+        """
+        Plays one game of Connect4 using the current two players.
+        """
         board = self.board
         main.drawBoard()
         self.player1.moves_considered, self.player2.moves_considered = 0, 0
@@ -76,6 +79,11 @@ class Game:
                     self.recordResult(board.winner)
 
     def recordResult(self, result):
+        """
+        Records the result of a game after it is completed.
+        :param result: an integer indiciating whether Player 1 or Player 2 won the game
+        :return:
+        """
         if result == 1:
             self.results['P1: ' + self.player1.label] += 1
         elif result == 2:
@@ -85,39 +93,15 @@ class Game:
         self.moves_considered_p1 += self.player1.moves_considered
         self.moves_considered_p2 += self.player2.moves_considered
 
-    # def testSuite(self, n):
-    #     randPlayer = PlayerRandom()
-    #     minimaxPlayer = PlayerMM(3, 1)  # Uses depth 3 and heuristic 1 by default
-    #     alphaBetaPlayer = PlayerAB(3, 1)  # Uses depth 3 and heuristic 1 by default
-    #     monteCarloPlayer = PlayerMC(100)  # Performs 100 test games by default
-    #     players = [randPlayer, minimaxPlayer, alphaBetaPlayer, monteCarloPlayer]
-    #     games = []
-    #     matchups = []
-    #
-    #     # Generate a Game for all possible matchups given the Player instances we have
-    #     for player in players:
-    #         # Random doesn't deserve to be player 1
-    #         if player.label == "Random":
-    #             continue
-    #         for otherPlayer in players:
-    #             # Avoid putting Player against itself
-    #             if otherPlayer != player:
-    #                 matchup = player.label + "/" + otherPlayer.label
-    #                 reversedMatchup = otherPlayer.label + "/" + player.label
-    #                 # Create Game for matchup if these two Players aren't already set to go against each other
-    #                 if matchup not in matchups and reversedMatchup not in matchups:
-    #                     matchups.append(matchup)
-    #                     game = Game(player, otherPlayer)
-    #                     games.append(game)
-    #
-    #     # Play each game in games n times
-    #     for iteration in range(0, n):
-    #         for game in games:
-    #             game.playGame()
-    #     self.printResults(games, n)
-
     @classmethod
     def getPlayer(cls, selection, depth=None, heuristic=None):
+        """
+        Returns a Player object based on input arguments.
+        :param selection: the type of player
+        :param depth: the depth of the player (if applicable)
+        :param heuristic: the herustic of the player (if applicable)
+        :return:
+        """
         player = None
         if selection == 1:
             player = ManualPlayer()

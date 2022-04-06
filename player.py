@@ -14,6 +14,11 @@ class Player:
     TIE_SCORE = 0
 
     def getHeuristic(self, board):
+        """
+        Returns the result of one of the three heuristic values based on the current board state.
+        :param board: the current board state
+        :return: the calculated heuristic value
+        """
         h = None
         if self.heuristic == 1:
             h = self.heuristic1(board)
@@ -24,6 +29,11 @@ class Player:
         return h
 
     def heuristic1(self, board):
+        """
+        A heuristic based on spaces adjacent to a player's pieces.
+        :param board: the current board
+        :return: the calculated heuristic value
+        """
         h = 0
         if (7 - board.recent_move[1] + board.checkAdjacentSpacesHeuristic(board.recent_move) < 4):
             h -= 70
@@ -48,6 +58,11 @@ class Player:
         return h
 
     def heuristic2(self, board):
+        """
+        A heuristic based on a player's piece locations.
+        :param board: the current board
+        :return: the calculated heuristic value
+        """
         h = 0
         for space in board.board:
             if board.board[space] == 1:  # player's turn
@@ -251,6 +266,11 @@ class Player:
         return h
 
     def heuristic3(self, board):
+        """
+        A heuristic based on a player's number of connected pieces.
+        :param board: the current board
+        :return: the calculated heuristic value
+        """
         move = board.recent_move
         player = board.turn
         h = 0
@@ -338,6 +358,10 @@ class Player:
         return h
 
     def getDepth(self):
+        """
+        Returns the depth of this player if it has one, else returns string 'N/A'
+        :return: player depth, or string 'N/A'
+        """
         if self.label == "Minimax" or self.label == "Alpha-Beta":
             return self.max_depth
         else:
